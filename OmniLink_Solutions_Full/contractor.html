@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Contractor Dashboard — OmniSolutions</title>
+<link rel="manifest" href="manifest.json">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;800&display=swap" rel="stylesheet" />
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<style>
+:root{
+  --bg:#f7fafc; --card:#ffffff; --ink:#0f172a; --muted:#5b6476;
+  --brand:#14b8a6; --brand2:#0ea5e9; --border:#e6eef3; --chip:#e6fffa; --danger:#ef4444;
+  --shadow:0 10px 26px rgba(2, 8, 23, .08);
+}
+*{box-sizing:border-box} 
+body{margin:0;background:var(--bg);color:var(--ink);font-family:Poppins,system-ui}
+a{color:inherit;text-decoration:none}
+.wrap{max-width:1100px;margin:28px auto;padding:0 14px}
+.card{background:var(--card);border:1px solid var(--border);border-radius:16px;box-shadow:var(--shadow)}
+.center{display:grid;place-items:center;height:100dvh;padding:16px}
+h1,h2,h3{margin:0}
+.btn{background:linear-gradient(135deg,var(--brand),var(--brand2));color:#fff;border:none;border-radius:12px;padding:10px 16px;font-weight:800;cursor:pointer}
+.btn.secondary{background:#e7f5ff;color:#0369a1}
+.btn.ghost{background:#f1f5f9;color:#0f172a}
+.btn.danger{background:var(--danger)}
+input,select,textarea{width:100%;padding:12px;border:1px solid var(--border);border-radius:12px;background:#fff;color:#0f172a;outline:none}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+@media(max-width:820px){.grid2,.grid3{grid-template-columns:1fr}}
+.kpi{padding:16px;border:1px solid var(--border);border-radius:14px;background:#f9fbfd}
+.kpi b{font-size:28px}
+.badge{display:inline-flex;gap:8px;align-items:center;background:#ecfeff;border:1px solid #99f6e4;color:#0f766e;border-radius:999px;padding:6px 10px;font-weight:700}
+.top{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.small{color:var(--muted);font-size:12px}
+.table{width:100%;border-collapse:separate;border-spacing:0 8px}
+.table th{font-size:12px;color:#6b7280;text-align:left}
+.table td{background:#fff;border:1px solid var(--border);padding:10px;border-radius:10px;vertical-align:top}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.toast{position:fixed;right:18px;bottom:18px;min-width:260px;max-width:86vw;background:#0f172a;color:#fff;border-radius:12px;padding:12px 14px;box-shadow:var(--shadow);display:none;z-index:50}
+.toast.show{display:block;animation:pop .18s ease}
+@keyframes pop{from{transform:translateY(8px);opacity:.2}to{transform:translateY(0);opacity:1}}
+#tgVerified{display:none;color:#16a34a;font-weight:700;margin-top:6px}
+#tgVerified.active{display:inline-block}
+</style>
+</head>
+<body>
+
+<div id="authScreen" class="center">
+  <div class="card" style="padding:24px;max-width:420px;width:100%;text-align:center">
+    <h2>🔐 Contractor Login</h2>
+    <input id="loginPhone" placeholder="Phone Number" style="margin:8px 0">
+    <input id="loginPass" type="password" placeholder="Password" style="margin:8px 0">
+    <button id="loginBtn" class="btn">Login</button>
+    <p class="small" style="margin-top:10px">Forgot password? Contact admin.</p>
+  </div>
+</div>
+
+<div id="dash" class="wrap hidden">
+  <div class="top"><h2>📊 Dashboard</h2><button id="logoutBtn" class="btn ghost">Logout</button></div>
+
+  <div class="grid3" style="margin:20px 0">
+    <div class="kpi"><b id="kpiLeads">0</b><br><span class="small">Total Leads</span></div>
+    <div class="kpi"><b id="kpiProfit">R0</b><br><span class="small">Total Profit</span></div>
+    <div class="kpi"><b id="kpiRating">0★</b><br><span class="small">Avg Rating</span></div>
+  </div>
+
+  <canvas id="progressChart" height="100"></canvas>
+
+  <section class="card" style="padding:16px;margin-top:20px">
+    <h3>💬 Admin Messages</h3>
+    <div id="msgBox" style="max-height:200px;overflow:auto;margin-top:6px;border:1px solid var(--border);padding:10px;border-radius:12px;background:#fff"></div>
+  </section>
+
+  <section class="card" style="padding:16px;margin-top:20px">
+    <h3>🧾 Job Log</h3>
+    <table class="table" id="jobTable"><thead><tr><th>ID</th><th>Client</th><th>Phone</th><th>Area</th><th>Service</th><th>Price</th><th>Status</th></tr></thead><tbody></tbody></table>
+  </section>
+
+  <section class="card" style="padding:16px;margin-top:20px">
+    <h3>⚙️ Settings</h3>
+    <div class="grid2">
+      <div>
+        <h4>Billing Info</h4>
+        <p class="small" id="billNote"></p>
+      </div>
+      <div>
+        <h4>Telegram Alerts</h4>
+        <input id="botToken" placeholder="Your BOT TOKEN" />
+        <input id="chatId" placeholder="Your CHAT ID" style="margin-top:6px" />
+        <div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn" id="saveTG">Save Telegram</button>
+          <button class="btn secondary" id="testTG">Test Telegram Message</button>
+        </div>
+        <span id="tgVerified">✅ Telegram Verified</span>
+        <p class="small" style="margin-top:6px">💡 Create a bot using @BotFather on Telegram, then paste BOT TOKEN + CHAT ID here.</p>
+      </div>
+    </div>
+  </section>
+</div>
+
+<div id="toast" class="toast"></div>
+
+<script>
+const $=(s)=>document.querySelector(s);
+function showToast(txt){const t=$("#toast");t.textContent=txt;t.classList.add("show");setTimeout(()=>t.classList.remove("show"),2000);}
+function Fload(k,d){try{return JSON.parse(localStorage.getItem(k)||JSON.stringify(d));}catch(e){return d;}}
+function Fsave(k,v){localStorage.setItem(k,JSON.stringify(v));}
+function me(){return Fload("current_contractor",null);}
+function saveMe(v){Fsave("current_contractor",v);Fsave("omni_partners",Fload("omni_partners",[]).map(x=>x.phone===v.phone?v:x));}
+
+$("#loginBtn").onclick=()=>{
+  const ph=$("#loginPhone").value.replace(/\D/g,""), pw=$("#loginPass").value.trim();
+  const list=Fload("omni_partners",[]); const p=list.find(x=>x.phone===ph&&x.pass===pw);
+  if(!p) return alert("Wrong login."); Fsave("current_contractor",p);
+  $("#authScreen").classList.add("hidden"); $("#dash").classList.remove("hidden");
+  showDashboard();
+};
+$("#logoutBtn").onclick=()=>{localStorage.removeItem("current_contractor");location.reload();};
+
+/* ===== Dashboard render ===== */
+function showDashboard(){
+  const p=me(); if(!p) return;
+  $("#billNote").textContent=localStorage.getItem("omni_billing_note")||"Pay OmniSolutions – FNB Acc 628900000 – Branch 250655 – Ref: Your Business Name";
+  const js=Fload("omni_jobs",[]).filter(j=>j.contractorPhone===p.phone);
+  $("#kpiLeads").textContent=js.length;
+  let profit=0; js.forEach(j=>{profit+=parseFloat(j.price||0)||0;});
+  $("#kpiProfit").textContent="R"+profit.toFixed(0);
+  const revs=Fload("omni_reviews",[]).filter(r=>r.contractorPhone===p.phone);
+  const avg=revs.length? (revs.reduce((a,b)=>a+b.stars,0)/revs.length).toFixed(1):"0";
+  $("#kpiRating").textContent=avg+"★";
+
+  const tbody=$("#jobTable tbody"); tbody.innerHTML="";
+  js.forEach(j=>{
+    const tr=document.createElement("tr");
+    tr.innerHTML=`<td>${j.id}</td><td>${j.customerName||""}</td><td>${j.customerPhone||""}</td><td>${j.area||""}</td><td>${j.service||""}</td><td contenteditable>${j.price||""}</td><td>${j.status||"Pending"}</td>`;
+    tbody.appendChild(tr);
+  });
+
+  const msgs=Fload("omni_msgs_"+p.phone,[]);
+  const box=$("#msgBox"); box.innerHTML=msgs.map(m=>`<div>${m.when.split("T")[0]} — <b>${m.from}:</b> ${m.text}</div>`).join("")||"No messages";
+
+  const ctx=document.getElementById("progressChart").getContext("2d");
+  const dataByMonth={};
+  js.forEach(j=>{
+    const m=new Date(j.created).toLocaleString("en",{month:"short"});
+    dataByMonth[m]=(dataByMonth[m]||0)+parseFloat(j.price||0)||0;
+  });
+  new Chart(ctx,{type:"line",data:{labels:Object.keys(dataByMonth),datasets:[{label:"Monthly Profit (R)",data:Object.values(dataByMonth)}]},options:{plugins:{legend:{display:false}}}});
+
+  // Telegram verification badge load
+  if(p.tgVerified){ $("#tgVerified").classList.add("active"); }
+}
+
+/* ===== Telegram save + test ===== */
+$("#saveTG").onclick=()=>{
+  const p=me(); if(!p) return;
+  p.tgToken=$("#botToken").value.trim();
+  p.tgChat=$("#chatId").value.trim();
+  saveMe(p);
+  showToast("Telegram saved!");
+};
+
+$("#testTG").onclick=async()=>{
+  const p=me(); if(!p) return alert("Login first.");
+  if(!p.tgToken || !p.tgChat) return alert("Enter and save your BOT TOKEN + CHAT ID first.");
+  try{
+    await fetch(`https://api.telegram.org/bot${p.tgToken}/sendMessage`,{
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({chat_id:p.tgChat,text:"✅ Test message from OmniSolutions contractor dashboard",parse_mode:"Markdown"})
+    });
+    p.tgVerified=true; saveMe(p);
+    $("#tgVerified").classList.add("active");
+    showToast("Test message sent!");
+  }catch(e){alert("Failed to send test message. Check BOT TOKEN or CHAT ID.");}
+};
+</script>
+</body>
+</html>
