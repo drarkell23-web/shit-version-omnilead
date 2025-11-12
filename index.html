@@ -1,333 +1,266 @@
 <!doctype html>
 <html lang="en">
 <head>
-<meta charset="utf-8"/>
-<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>OmniSolutions — All-in-One Service Network</title>
 <link rel="stylesheet" href="theme.css">
-<!-- Firebase bridge still used for Firestore writes; keeps existing behavior -->
 <script type="module" src="Firebase-bridge.js" defer></script>
-<style>
-/* small overrides for layout used by the dynamic category list */
-.leftbar { width: 320px; min-width: 260px; }
-.content { padding: 24px; }
-.service-bubble { display:inline-block;margin:6px; padding:10px 12px; border-radius:999px; background:#0b0620; color:var(--muted); cursor:pointer; border:1px solid #ffffff05; }
-.chat-widget { position: fixed; right: 18px; bottom: 82px; z-index: 2000; }
-.float-bubble { position: fixed; right: 18px; bottom: 18px; z-index: 2100; border-radius: 999px; background: var(--accent); color: white; border:0; padding:12px 14px; box-shadow: 0 6px 18px rgba(0,0,0,.4); cursor:pointer; }
-.chat-window { width: 320px; max-width: 92vw; background: var(--panel); border-radius: 12px; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,.6); display:flex; flex-direction:column; }
-.chat-header { padding:10px; background:linear-gradient(90deg,var(--accent),#42b3ff); color:white; font-weight:700; }
-.chat-messages { height: 260px; overflow:auto; padding:10px; display:flex; flex-direction:column-reverse; gap:8px; background:linear-gradient(180deg,#070416,#0b0813); }
-.chat-input { display:flex; gap:8px; padding:10px; background:#070417; }
-.chat-input input { flex:1; padding:10px; border-radius:8px; border:1px solid #ffffff08; background:#050417; color:var(--ink); }
-.confetti-canvas { position: fixed; left:0; top:0; right:0; height:0; pointer-events:none; z-index:2200; }
-.hidden { display:none !important; }
-.admin-btn { position: fixed; right: 18px; bottom: 18px; z-index: 9999; }
-.top-left-contractor { position: absolute; left: 18px; top: 18px; z-index: 10; }
-</style>
+<script type="module" src="confetti.js" defer></script>
 </head>
 <body>
-  <!-- top-left contractor-dashboard quick link (shows for all users; contractors can use it) -->
-  <div class="top-left-contractor">
-    <button class="btn" id="contractorDashBtn">Contractor Dashboard</button>
-  </div>
-
   <div class="shell">
-    <aside class="leftbar">
-      <h3>Categories</h3>
-      <div id="categoriesContainer"></div>
+    <!-- LEFT SIDEBAR: generated (see inline script below) -->
+    <aside id="leftSidebar" class="leftbar" aria-label="Service categories">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
+        <button id="contractorDashBtnTop" class="btn">Contractor Dashboard</button>
+        <button id="reviewsBtn" class="btn" style="margin-left:6px;">Reviews</button>
+        <button id="adminBadgeBtn" class="btn" style="margin-left:auto;display:none;background:linear-gradient(90deg,#ff9a00,#ff4d6d);padding:6px 10px;border-radius:10px;font-weight:700;">Admin</button>
+      </div>
+      <h3 style="color:var(--muted);margin-top:0">Categories</h3>
+      <div id="categoriesContainer" style="display:flex;flex-direction:column;gap:10px;max-height:78vh;overflow:auto;padding-right:6px;"></div>
+      <div style="margin-top:14px;border-top:1px solid #ffffff08;padding-top:12px">
+        <button id="topContractorsBtn" class="btn" style="width:100%;margin-bottom:8px;">Top Contractors (Platinum)</button>
+        <div style="display:flex;gap:8px;">
+          <button id="allServicesBtn" class="btn" style="flex:1;">All Services</button>
+          <button id="contactUsBtn" class="btn" style="flex:1;">Contact</button>
+        </div>
+      </div>
     </aside>
 
+    <!-- MAIN CONTENT -->
     <main class="content">
-      <header><h1>OmniSolutions</h1><p>Your all-in-one platform for maintenance, property & services.</p></header>
-
-      <section class="card">
-        <h2>Request a Service</h2>
-        <p>Use the chat (bottom-right) to quickly request help — it will walk you through details.</p>
-      </section>
+      <header><h1>OmniSolutions</h1><p>Your all-in-one platform for services. Use chat to request help — we’ll match you.</p></header>
 
       <section class="card">
         <h2>Popular Services</h2>
-        <div id="popularServices"></div>
+        <div id="popularServices" style="display:flex;flex-wrap:wrap"></div>
       </section>
 
       <section class="card">
         <h2>Why Choose Us</h2>
         <ul>
-          <li>Verified contractors across many industries</li>
+          <li>Verified contractors</li>
           <li>Instant notifications via Telegram</li>
-          <li>Professional and reliable service</li>
+          <li>Premium tools for top contractors</li>
         </ul>
       </section>
     </main>
   </div>
 
-  <!-- Chatbot float -->
-  <div class="chat-widget" id="chatWidget" aria-hidden="true">
-    <div id="chatWindow" class="chat-window hidden" role="dialog" aria-label="Chat with OmniSolutions">
-      <div class="chat-header">Omni Chat — We'll help you</div>
-      <div id="chatMessages" class="chat-messages" aria-live="polite"></div>
-      <div class="chat-input">
-        <input id="chatInput" placeholder="Type your answer..." autocomplete="off"/>
+  <!-- Chat widget -->
+  <div id="chatWidget" style="position:fixed;right:18px;bottom:18px;z-index:2000">
+    <button id="openChat" class="btn" style="border-radius:999px;padding:12px 14px">Chat</button>
+    <div id="chatWindow" style="width:340px;max-width:92vw;display:none;flex-direction:column;position:fixed;right:18px;bottom:70px;z-index:2100">
+      <div style="background:linear-gradient(90deg,var(--accent-from),var(--accent-to));padding:10px;border-radius:10px 10px 0 0;color:white;font-weight:700">Omni Chat</div>
+      <div id="chatMsgs" style="background:linear-gradient(180deg,#070416,#0b0813);height:280px;overflow:auto;padding:12px;display:flex;flex-direction:column-reverse"></div>
+      <div style="display:flex;gap:8px;padding:10px;background:#070417;border-radius:0 0 10px 10px">
+        <input id="chatInput" class="small-input" placeholder="Type your message...">
         <button id="chatSend" class="btn">Send</button>
       </div>
     </div>
   </div>
 
-  <!-- Admin reveal button bottom-right -->
-  <button id="adminRevealBtn" class="float-bubble admin-btn" title="Admin login">Admin</button>
-
-  <!-- Confetti canvas (graffiti spark) -->
-  <canvas id="confettiCanvas" class="confetti-canvas"></canvas>
+  <canvas id="confettiCanvas" style="position:fixed;left:0;top:0;right:0;height:0;pointer-events:none;z-index:2200"></canvas>
 
 <script type="module">
-/* index.js (inlined) — generates categories/services data, handles chat flow, confetti, dashboard buttons */
+/* index frontend: categories, serviceList generation, chat flow, confetti init */
+import confettiSpark from './confetti.js';
 import { createLead } from './Firebase-bridge.js';
 
-// ------- DATA: 30 categories and ~200 services (programmatic lists) -------
+confettiSpark.init(document.getElementById('confettiCanvas'));
+
+// generate a large service list (100+ services) by combining categories
 const categories = [
-  { id: 'property', name: 'Property', services: ['Plumbing','Roofing','Painting','Tiling','Glazing','Pest Control','Locksmith','Plastering','Carpentry','Electrical Repair','Security Gates','Pool Maintenance','Gutter Cleaning','Fence Repair'] },
-  { id: 'cleaning', name: 'Cleaning', services: ['Home Cleaning','Office Cleaning','Deep Clean','Carpet Cleaning','Window Cleaning','Move In/Out Clean'] },
-  { id: 'garden', name: 'Garden & Outdoor', services: ['Lawn Mowing','Tree Pruning','Irrigation','Landscape Design','Hedge Trimming','Garden Clearance'] },
-  { id: 'appliances', name: 'Appliances', services: ['Washing Machine Repair','Fridge Repair','Oven Repair','Dishwasher Repair','AC Repair'] },
-  { id: 'auto', name: 'Automotive', services: ['Tyre Fitting','Battery Replacement','Basic Service','Tow Service','AC Recharge'] },
-  { id: 'security', name: 'Security', services: ['CCTV','Alarm Systems','Access Control','Gate Motors','Security Patrols'] },
-  { id: 'it', name: 'IT & Networking', services: ['WiFi Setup','PC Repair','Server Setup','Cabling','Printer Repair'] },
-  { id: 'wellness', name: 'Home Wellness', services: ['Plumbing Inspection','Water Filtration','Mold Remediation','Ventilation'] },
-  { id: 'handyman', name: 'Handyman', services: ['Furniture Assembly','Picture Hanging','Small Repairs','Shelving'] },
-  { id: 'painting', name: 'Painting', services: ['Interior Painting','Exterior Painting','Spray Painting','Wallpaper Removal'] },
-  { id: 'electrical', name: 'Electrical', services: ['Switch Repair','Power Outage','Light Fitting','Solar Install','Generator Service'] },
-  { id: 'moving', name: 'Moving & Storage', services: ['Local Move','Packing Service','Storage','Furniture Removal'] },
-  { id: 'renovation', name: 'Renovation', services: ['Kitchen Renovation','Bathroom Renovation','Extensions','Tiling'] },
-  { id: 'plumbing', name: 'Plumbing', services: ['Tap Repair','Leak Detection','Gas Fitting','Drain Unblock'] },
-  { id: 'events', name: 'Events & Rentals', services: ['Chair hire','Marquee hire','Sound Systems','Decor'] },
-  { id: 'beauty', name: 'Beauty & Care', services: ['Mobile Hair','Makeup Artist','Massage','Nail Technician'] },
-  { id: 'education', name: 'Tutors & Education', services: ['Math Tutor','Language Tutor','Online Classes'] },
-  { id: 'legal', name: 'Legal & Admin', services: ['Notary','Document Drafting','Virtual Assistant'] },
-  { id: 'financial', name: 'Financial', services: ['Bookkeeping','Tax Prep','Loan Advice'] },
-  { id: 'logistics', name: 'Logistics', services: ['Courier','Delivery','Freight'] },
-  { id: 'pet', name: 'Pets', services: ['Pet Sitting','Grooming','Vet Visit'] },
-  { id: 'homecare', name: 'Homecare', services: ['Elderly Care','Nanny','Childcare'] },
-  { id: 'decor', name: 'Decor', services: ['Interior Styling','Curtain Fitting','Upholstery'] },
-  { id: 'fitness', name: 'Fitness', services: ['Personal Trainer','Yoga Class','Pilates'] },
-  { id: 'consulting', name: 'Business Consulting', services: ['Strategy','Marketing','Branding'] },
-  { id: 'photography', name: 'Photography', services: ['Portraits','Property Photography','Event Photography'] },
-  { id: 'printing', name: 'Printing', services: ['Signage','Business Cards','Flyers'] },
-  { id: 'waste', name: 'Waste Management', services: ['Junk Removal','Skip Hire','Recycling'] },
-  { id: 'renewables', name: 'Renewables', services: ['Solar Panels','Battery Install','Energy Audit'] },
-  { id: 'misc', name: 'Miscellaneous', services: ['Custom Jobs','Odd Jobs','On Demand'] }
+  { id:"property", title:"Property & Maintenance" },
+  { id:"cleaning", title:"Cleaning & Hygiene" },
+  { id:"security", title:"Security & Energy" },
+  { id:"garden", title:"Outdoor & Garden" },
+  { id:"appliances", title:"Appliances & Repairs" },
+  { id:"handyman", title:"Handyman & Small Jobs" },
+  { id:"moving", title:"Moving & Storage" },
+  { id:"renovation", title:"Renovation & Building" },
+  { id:"electrical", title:"Electrical" },
+  { id:"plumbing", title:"Plumbing" },
+  { id:"decor", title:"Decor & Interiors" },
+  { id:"it", title:"IT & Networking" },
+  { id:"auto", title:"Automotive" },
+  { id:"events", title:"Events & Rentals" },
+  { id:"health", title:"Health & Wellness" },
+  { id:"finance", title:"Financial" },
+  { id:"legal", title:"Legal & Admin" },
+  { id:"pet", title:"Pets" },
+  { id:"fitness", title:"Fitness" },
+  { id:"misc", title:"Miscellaneous" }
 ];
 
-// For demonstration produce many service entries by combining category services
-function buildLargeList() {
+function buildLargeServiceList() {
   const list = [];
-  let counter = 0;
-  for (const cat of categories) {
-    for (const s of cat.services) {
-      counter++;
-      list.push({ id: `${cat.id}-${counter}`, cat: cat.id, name: s });
-      // generate similar service variations to reach 200+ total
-      for (let v=1; v<=3; v++){
-        counter++;
-        list.push({ id: `${cat.id}-${counter}`, cat: cat.id, name: `${s} - Variation ${v}`});
-      }
+  let idx = 0;
+  for (const c of categories) {
+    const seeds = [
+      "Inspection","Repair","Installation","Maintenance","Cleaning","Replacement","Upgrade","Emergency"
+    ];
+    for (let s=0;s<12;s++){
+      const name = `${seeds[s % seeds.length]} ${c.title.split(' ')[0]} Service ${s+1}`;
+      list.push({ id: `${c.id}-${idx++}`, cat: c.id, name });
     }
   }
-  // Add some extra generic services to reach >200 if needed
+  // make sure >100
   while (list.length < 220) {
-    const idx = Math.floor(Math.random()*categories.length);
-    const cat = categories[idx];
-    const n = `General ${cat.name} Service ${list.length+1}`;
-    list.push({ id: `${cat.id}-${list.length+1}`, cat: cat.id, name: n });
+    const c = categories[Math.floor(Math.random()*categories.length)];
+    list.push({ id: `${c.id}-${idx++}`, cat: c.id, name: `General ${c.title} Service ${idx}` });
   }
   return list;
 }
-const serviceList = buildLargeList();
+window.serviceList = buildLargeServiceList();
 
-// populate left category UI
+// render sidebar categories (reuse server-provided snippet concept)
 const categoriesContainer = document.getElementById('categoriesContainer');
-for (const cat of categories) {
-  const wrap = document.createElement('div');
-  wrap.className = 'category';
-  const btn = document.createElement('button');
-  btn.className = 'cat-btn';
-  btn.textContent = cat.name;
-  const servicesWrap = document.createElement('div');
-  servicesWrap.className = 'services';
-  // add services for this category (limit first 12 shown)
-  const catServices = serviceList.filter(s=>s.cat===cat.id).slice(0,30);
-  catServices.forEach(svc=>{
+categories.forEach(cat => {
+  const row = document.createElement('div'); row.className = 'category-row';
+  const toggle = document.createElement('div'); toggle.className = 'cat-toggle';
+  toggle.innerHTML = `<span>${cat.title}</span><span style="opacity:.6">▸</span>`;
+  const sList = document.createElement('div'); sList.className = 'services-list';
+  const svcs = window.serviceList.filter(s => s.cat === cat.id).slice(0,40);
+  svcs.forEach(svc => {
     const b = document.createElement('button');
-    b.className = 'svc';
+    b.className = 'svc-bubble';
     b.textContent = svc.name;
-    b.dataset.serviceId = svc.id;
-    b.addEventListener('click', ()=> {
-      // open chat and preselect service
-      openChatWithService(`${cat.name} › ${svc.name}`);
-    });
-    servicesWrap.appendChild(b);
+    b.addEventListener('click', ()=> openChatWithService(`${cat.title} › ${svc.name}`, svc.id));
+    sList.appendChild(b);
   });
-  btn.addEventListener('click', ()=> servicesWrap.classList.toggle('open'));
-  wrap.appendChild(btn);
-  wrap.appendChild(servicesWrap);
-  categoriesContainer.appendChild(wrap);
-}
+  toggle.addEventListener('click', ()=> {
+    const open = sList.classList.toggle('open');
+    toggle.querySelector('span:last-child').textContent = open ? '▾' : '▸';
+  });
+  row.appendChild(toggle);
+  row.appendChild(sList);
+  categoriesContainer.appendChild(row);
+});
 
-// popular services (first 24)
+// popular services UI
 const popular = document.getElementById('popularServices');
-serviceList.slice(0,24).forEach(s=>{
+window.serviceList.slice(0,24).forEach(s=>{
   const el = document.createElement('button');
-  el.className = 'service-bubble';
+  el.className = 'svc-bubble';
   el.textContent = s.name;
-  el.addEventListener('click', ()=> openChatWithService(s.name));
+  el.addEventListener('click', ()=> openChatWithService(s.name, s.id));
   popular.appendChild(el);
 });
 
-// chat flow state machine
-const chatWidget = document.getElementById('chatWidget');
+// Chat state (multi-step full conversation)
 const chatWindow = document.getElementById('chatWindow');
-const chatMessages = document.getElementById('chatMessages');
+const chatMsgs = document.getElementById('chatMsgs');
 const chatInput = document.getElementById('chatInput');
 const chatSend = document.getElementById('chatSend');
-const adminBtn = document.getElementById('adminRevealBtn');
-const floatBubble = document.getElementById('adminRevealBtn'); // reuse admin button UI (label remains Admin)
-let chatState = { step:0, values: {} };
+const openChatBtn = document.getElementById('openChat');
 
-function showChat() {
-  chatWindow.classList.remove('hidden');
-  chatWidget.setAttribute('aria-hidden','false');
+let convo = { step: 0, data: {} };
+
+function pushBot(msg) {
+  const el = document.createElement('div'); el.style.padding='8px'; el.style.borderRadius='8px'; el.style.background='#0f0b1a'; el.style.color='var(--muted)'; el.style.marginBottom='8px'; el.textContent = msg;
+  chatMsgs.prepend(el);
+}
+function pushUser(msg) {
+  const el = document.createElement('div'); el.style.padding='8px'; el.style.borderRadius='8px'; el.style.background='linear-gradient(90deg,var(--accent-from),var(--accent-to))'; el.style.color='#fff'; el.style.marginBottom='8px'; el.style.alignSelf='flex-end'; el.textContent = msg;
+  chatMsgs.prepend(el);
+}
+
+openChatBtn.addEventListener('click', () => {
+  chatWindow.style.display = chatWindow.style.display === 'flex' ? 'none' : 'flex';
+  if (chatWindow.style.display === 'flex') startConvo();
+});
+
+chatSend.addEventListener('click', () => handleInput());
+chatInput.addEventListener('keydown', e => { if (e.key === 'Enter') handleInput(); });
+
+function startConvo() {
+  convo = { step: 1, data: {} };
+  chatMsgs.innerHTML = '';
+  pushBot("Hi — I'm OmniChat. I'll help get your request. What's your full name?");
   chatInput.focus();
 }
-function hideChat(){
-  chatWindow.classList.add('hidden');
-  chatWidget.setAttribute('aria-hidden','true');
-}
-// open with a preselected service
-function openChatWithService(serviceName) {
-  chatState = { step: 1, values: { service: serviceName } };
-  showChat();
-  pushMessage("Hi! I'm OmniChat — I'll help get your request. What's your full name?");
+
+function openChatWithService(serviceName, serviceId) {
+  // start with prefilled service
+  convo = { step: 2, data: { service: serviceName, serviceId } };
+  chatMsgs.innerHTML = '';
+  pushBot(`You chose: ${serviceName}. What's your full name?`);
+  chatInput.focus();
 }
 
-document.querySelector('.float-bubble')?.addEventListener('click', ()=>{
-  // no-op; adminRevealBtn handles admin
-});
-
-// generic push message into chat (from bot)
-function pushMessage(text, from='bot') {
-  const el = document.createElement('div');
-  el.style.padding='8px';
-  el.style.borderRadius='8px';
-  el.style.maxWidth='85%';
-  el.style.marginBottom='6px';
-  el.style.alignSelf = from==='bot' ? 'flex-start' : 'flex-end';
-  el.style.background = from==='bot' ? '#0f0b1a' : 'linear-gradient(90deg,var(--accent),#42b3ff)';
-  el.style.color = from==='bot' ? 'var(--muted)' : '#fff';
-  el.textContent = text;
-  chatMessages.prepend(el);
-}
-
-// initial opening when clicked (floating bubble)
-const float = document.createElement('button');
-float.className = 'float-bubble';
-float.textContent = 'Chat';
-float.title = 'Open chat';
-document.body.appendChild(float);
-float.addEventListener('click', ()=> {
-  if (chatWindow.classList.contains('hidden')) {
-    chatState = { step: 1, values: {} };
-    showChat();
-    pushMessage("Hi! I'm OmniChat — what's your full name?");
-  } else {
-    hideChat();
-  }
-});
-
-// send button
-chatSend.addEventListener('click', ()=> processChatInput());
-chatInput.addEventListener('keydown', e => { if (e.key === 'Enter') processChatInput(); });
-
-async function processChatInput(){
+async function handleInput() {
   const text = chatInput.value.trim();
   if (!text) return;
-  pushMessage(text, 'user');
+  pushUser(text);
   chatInput.value = '';
-  // step handling: 1=name, 2=phone, 3=service selection or prefilled, 4=message, 5=confirm/send
-  if (chatState.step === 1) {
-    chatState.values.name = text;
-    chatState.step = 2;
-    pushMessage("Thanks — what's the best phone number?");
-  } else if (chatState.step === 2) {
-    chatState.values.phone = text;
-    chatState.step = 3;
-    // ask to select service from dropdown
-    // show top 6 suggestions
-    const suggestions = serviceList.slice(0,6).map(s=>s.name).join(' • ');
-    pushMessage(`Which service do you need? (or type it) Suggestions: ${suggestions}`);
-  } else if (chatState.step === 3) {
-    // user typed service OR we had preselected
-    chatState.values.service = chatState.values.service || text;
-    chatState.step = 4;
-    pushMessage("Got it. Any other details we should send to the contractor?");
-  } else if (chatState.step === 4) {
-    chatState.values.message = text;
-    chatState.step = 5;
-    pushMessage("Thanks — sending your request now. Hold on…");
-    // send confetti + graffiti
-    triggerConfetti();
-    // call backend (createLead)
-    const payload = {
-      name: chatState.values.name,
-      phone: chatState.values.phone,
-      email: "",
-      service: chatState.values.service,
-      message: chatState.values.message
-    };
-    // Firestore + backend
-    try {
-      await createLead(payload); // writes to Firestore if configured
-    } catch(e){ console.warn('Firestore write failed', e); }
-    try {
-      const r = await fetch('/api/lead', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) });
-      const j = await r.json();
-      if (j.ok) {
-        pushMessage("✅ Your request has been sent. A contractor will contact you shortly.");
-      } else {
-        pushMessage("❌ There was a problem sending your request. Please try again in a moment.");
-      }
-    } catch (err) {
-      console.error(err);
-      pushMessage("❌ Unable to reach server. Please try again shortly.");
+  if (convo.step === 1) {
+    convo.data.name = text;
+    convo.step = 2;
+    pushBot("Thanks — what's the best phone number to reach you?");
+  } else if (convo.step === 2) {
+    // if service prefilled, this step is phone; else this is service
+    if (!convo.data.service) {
+      convo.data.phone = text;
+      convo.step = 3;
+      pushBot("Which service do you need? (Pick from suggestions or type it)");
+    } else {
+      convo.data.phone = text;
+      convo.step = 3;
+      pushBot("Any extra details we should include? (address, time availability, etc.)");
     }
-    // reset state after a pause
-    setTimeout(()=> { chatState = { step:1, values:{} }; }, 1000);
+  } else if (convo.step === 3) {
+    // message/details
+    convo.data.message = text;
+    convo.step = 4;
+    pushBot("One last thing — do you have a preferred contractor? (name or leave blank)");
+  } else if (convo.step === 4) {
+    convo.data.preferred = text;
+    // confirm & send
+    pushBot("Thanks — sending your request now. You'll see a confirmation in a moment.");
+    // trigger confetti
+    confettiSpark.shoot(120);
+    // prepare payload (minimal info to telegram)
+    const payload = {
+      name: convo.data.name || "Unknown",
+      phone: convo.data.phone || "Unknown",
+      email: "",
+      service: convo.data.service || convo.data.preferred || "General",
+      message: convo.data.message || "",
+      // include preferred contractor id or name so server can route
+      contractorId: convo.data.preferred ? convo.data.preferred : undefined
+    };
+    try {
+      await createLead(payload); // optional Firestore + backend
+    } catch (e) { console.warn(e); }
+    try {
+      const resp = await fetch('/api/lead', { method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify(payload) });
+      const j = await resp.json();
+      if (j.ok) pushBot("✅ Request sent — contractors will contact you. Thank you!");
+      else pushBot("❌ Failed to send. Please try again later.");
+    } catch (err) {
+      pushBot("❌ Server error. Try again later.");
+    }
+    // reset
+    setTimeout(()=> { convo = { step:0, data:{} }; }, 1200);
   }
 }
 
-// Admin reveal button logic (enter secret)
-document.getElementById('adminRevealBtn').addEventListener('click', async ()=>{
-  const secret = prompt('Enter admin secret to reveal admin dashboard:');
-  if (!secret) return;
-  // We already have a server endpoint /api/admin-secret that returns if admin secret exists
-  const ok = await fetch('/api/admin-secret').then(r=>r.json()).catch(()=>({ok:false}));
-  if (!ok.secret) { alert('Admin not configured on server.'); return; }
-  // Now simply require the input to match the secret in your head — we rely on server validation in admin actions
-  // For simple UX, we direct to admin page after second confirmation
-  const confirmSecret = prompt('Confirm admin secret again:');
-  if (confirmSecret === secret) {
-    window.location.href = '/admin-dashboard.html';
-  } else alert('Incorrect secret.');
-});
+// admin badge visibility check
+(async ()=> {
+  try {
+    const r = await fetch('/api/admin-secret'); const j = await r.json();
+    if (j && j.secret) document.getElementById('adminBadgeBtn').style.display='inline-block';
+  } catch(e){}
+})();
 
-// contractor quick link
-document.getElementById('contractorDashBtn').addEventListener('click', ()=> window.location.href='/contractor-dashboard.html');
+// wire top buttons
+document.getElementById('contractorDashBtnTop').addEventListener('click', ()=> window.location.href = '/contractor-dashboard.html');
+document.getElementById('reviewsBtn').addEventListener('click', ()=> window.location.href = '/reviews.html');
+document.getElementById('topContractorsBtn').addEventListener('click', ()=> { /* open modal implemented on server pages or client */ alert('Top contractors list opened'); });
+document.getElementById('allServicesBtn').addEventListener('click', ()=> { document.querySelectorAll('.services-list').forEach(s=> s.classList.add('open')); });
+document.getElementById('contactUsBtn').addEventListener('click', ()=> window.location.href='/contact.html');
 
-// ---------------- CONFETTI (graffiti) ----------------
-import confettiSpark from './confetti.js';
-const canvas = document.getElementById('confettiCanvas');
-confettiSpark.init(canvas);
-function triggerConfetti(){
-  confettiSpark.shoot(120);
-}
 </script>
 </body>
 </html>
