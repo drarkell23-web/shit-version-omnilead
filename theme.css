@@ -7,9 +7,10 @@
   --muted:#9b98ab;
   --success:#2fd27a;
 }
-*{box-sizing:border-box;font-family:Inter, system-ui, Arial, sans-serif}
-html,body{height:100%}
-body{margin:0;background:linear-gradient(180deg,var(--bg),#060312);color:var(--ink)}
+
+/* base */
+*{box-sizing:border-box;font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,"Helvetica Neue",Arial}
+html,body{height:100%;margin:0;background:linear-gradient(180deg,var(--bg),#060312);color:var(--ink)}
 .shell{display:flex;min-height:100vh}
 .leftbar{width:320px;min-width:260px;padding:18px;border-right:1px solid #ffffff10;background:linear-gradient(180deg,#0c0816,#0f0a1b)}
 .content{flex:1;padding:22px}
@@ -25,3 +26,14 @@ body{margin:0;background:linear-gradient(180deg,var(--bg),#060312);color:var(--i
 .top-contractor-row{display:flex;align-items:center;gap:8px;padding:8px;border-radius:10px;background:linear-gradient(90deg,#1a1130,#0c0820);border:1px solid #ffffff06}
 .badge-img{width:28px;height:28px;object-fit:cover;border-radius:6px;box-shadow:0 4px 12px rgba(0,0,0,.4)}
 .contractor-name{font-weight:700;color:var(--ink);font-size:14px}
+
+/* small utilities */
+.small{font-size:13px;color:var(--muted)}
+.header-row{display:flex;align-items:center;gap:12px}
+.logo-mini{width:44px;height:44px;border-radius:8px;background:#0b0616;display:inline-block}
+
+/* responsive */
+@media (max-width:980px) {
+  .leftbar{display:none}
+  .content{padding:12px}
+}
