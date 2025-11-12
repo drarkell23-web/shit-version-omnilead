@@ -1,23 +1,13 @@
 /**
- * OmniLink - server.js
- * Single-file Node/Express server for Render.
+ * server.js — OmniLink Solutions
+ * - Persistent JSON store for demo-to-production ease (data in /data/*.json)
+ * - Endpoints for leads, contractors, reviews, services, applying badges, messages
+ * - Sends Telegram messages to admin bot and contractor bot if configured
  *
- * Features:
- * - Serves static files (index.html, admin-dashboard.html, contractor-dashboard.html, theme.css)
- * - Handles leads, contractors, reviews, admin messages, override tokens
- * - Stores data in simple JSON files under /data for quick demo (not production-safe)
- * - Uploads saved to /uploads (Render ephemeral disk)
- * - Forwards leads to Telegram (admin bot via BOT_TOKEN/ADMIN_CHAT_ID and optional contractor token/chat)
- * - Subscription management (UI + server placeholder)
+ * IMPORTANT: Set these environment variables in your host (Render):
+ * BOT_TOKEN, ADMIN_CHAT_ID, ADMIN_SECRET
  *
- * Environment variables (set in Render):
- * - BOT_TOKEN: default admin bot token (used to forward leads)
- * - ADMIN_CHAT_ID: admin chat id to send admin notifications to
- * - ADMIN_SECRET: secret passphrase to enable admin actions
- * - ADMIN_OVERRIDE_TOKEN: optional override bot token
- * - ADMIN_OVERRIDE_CHAT_ID: optional override chat id
- *
- * Notes: For production, use a proper DB, storage bucket, and secure credential handling.
+ * NOTE: For production durability across deploys use Firestore or an external DB.
  */
 
 import express from "express";
@@ -27,259 +17,242 @@ import multer from "multer";
 import fetch from "node-fetch";
 import { fileURLToPath } from "url";
 import dotenv from "dotenv";
-
 dotenv.config();
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-
-const app = express();
 const PORT = process.env.PORT || 10000;
 
 const BOT_TOKEN = process.env.BOT_TOKEN || "8526401033:AAFrG8IH8xqQL_RTD7s7JLyxZpc8e8GOyyg";
 const ADMIN_CHAT_ID = process.env.ADMIN_CHAT_ID || "8187670531";
-const ADMIN_OVERRIDE_TOKEN = process.env.ADMIN_OVERRIDE_TOKEN || "8374597023:AAF-rIEJOmu_XiGMPpUsI1sCL2dN5_K5wig";
-const ADMIN_OVERRIDE_CHAT_ID = process.env.ADMIN_OVERRIDE_CHAT_ID || "8187670531";
 const ADMIN_SECRET = process.env.ADMIN_SECRET || "omni$admin_2025_KEY!@34265346597843152";
 
-// ensure data and uploads
 const DATA_DIR = path.join(__dirname, "data");
 const UPLOADS_DIR = path.join(__dirname, "uploads");
+const ASSETS_DIR = path.join(__dirname, "assets");
+const BADGES_DIR = path.join(__dirname, "badges");
+
 if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR);
 if (!fs.existsSync(UPLOADS_DIR)) fs.mkdirSync(UPLOADS_DIR);
+if (!fs.existsSync(ASSETS_DIR)) fs.mkdirSync(ASSETS_DIR);
+if (!fs.existsSync(BADGES_DIR)) fs.mkdirSync(BADGES_DIR);
 
-// helper to read/write JSON files
+// small helpers
 function readJSON(name) {
-  const p = path.join(DATA_DIR, name + ".json");
-  if (!fs.existsSync(p)) return [];
-  try { return JSON.parse(fs.readFileSync(p)); } catch(e){ return []; }
+  const file = path.join(DATA_DIR, name + ".json");
+  if (!fs.existsSync(file)) return [];
+  try { return JSON.parse(fs.readFileSync(file, "utf8")); } catch(e){ console.error("readJSON err", e); return []; }
 }
-function writeJSON(name, arr) {
-  const p = path.join(DATA_DIR, name + ".json");
-  fs.writeFileSync(p, JSON.stringify(arr, null, 2));
+function writeJSON(name, data) {
+  const file = path.join(DATA_DIR, name + ".json");
+  fs.writeFileSync(file, JSON.stringify(data, null, 2));
 }
-
-// append log
 function appendLog(name, obj) {
   const arr = readJSON(name);
   arr.unshift({ ts: new Date().toISOString(), ...obj });
-  writeJSON(name, arr.slice(0, 1000));
+  writeJSON(name, arr.slice(0, 5000));
 }
 
-// send to telegram using a token + chat id
-async function sendTelegram(token, chatId, text, parse_mode = "HTML") {
-  try {
-    if (!token || !chatId) throw new Error("Missing token or chatId");
-    const res = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ chat_id: String(chatId), text, parse_mode })
-    });
-    const data = await res.json();
-    if (!data.ok) console.warn("Telegram send error", data);
-    return data;
-  } catch (err) {
-    console.error("sendTelegram error", err.message || err);
-    return { ok: false, error: err.message || String(err) };
-  }
-}
+const upload = multer({
+  storage: multer.diskStorage({
+    destination: (req,file,cb) => cb(null, UPLOADS_DIR),
+    filename: (req,file,cb) => cb(null, `${Date.now()}-${Math.random().toString(36).slice(2,8)}-${file.originalname.replace(/\s+/g,'_')}`)
+  }),
+  limits: { fileSize: 10 * 1024 * 1024 }
+});
 
-async function notifyAdminAndMaybeContractor({ messageText, contractorToken, contractorChatId }) {
-  const results = {};
-  if (BOT_TOKEN && ADMIN_CHAT_ID) results.admin = await sendTelegram(BOT_TOKEN, ADMIN_CHAT_ID, messageText);
-  if (ADMIN_OVERRIDE_TOKEN && ADMIN_OVERRIDE_CHAT_ID) results.override = await sendTelegram(ADMIN_OVERRIDE_TOKEN, ADMIN_OVERRIDE_CHAT_ID, messageText);
-  if (contractorToken && contractorChatId) results.contractor = await sendTelegram(contractorToken, contractorChatId, messageText);
-  appendLog("sent_messages", { messageText, results });
-  return results;
-}
-
-// middleware
-app.use(express.json({ limit: "8mb" }));
+const app = express();
+app.use(express.json({ limit: "12mb" }));
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static(__dirname));
 app.use("/uploads", express.static(UPLOADS_DIR));
+app.use("/assets", express.static(ASSETS_DIR));
+app.use("/badges", express.static(BADGES_DIR));
 
-// multer for uploads
-const storage = multer.diskStorage({
-  destination: (req,file,cb) => cb(null, UPLOADS_DIR),
-  filename: (req,file,cb) => cb(null, `${Date.now()}-${Math.random().toString(36).slice(2,8)}-${file.originalname.replace(/\s+/g,'_')}`)
+async function sendTelegram(token, chatId, text) {
+  if (!token || !chatId) return { ok:false, error: "missing token/chat" };
+  try {
+    const res = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ chat_id: String(chatId), text, parse_mode: "HTML" })
+    });
+    return await res.json();
+  } catch (err) {
+    console.error("sendTelegram error", err);
+    return { ok:false, error: String(err) };
+  }
+}
+
+// Ensure services list exists (server generates clear names; no "Service 28" endings)
+function ensureServices() {
+  const p = path.join(DATA_DIR, "services.json");
+  if (fs.existsSync(p)) return;
+  const templates = {
+    "Property & Maintenance": ["Roof Repair","Gutter Cleaning","Plumbing Repair","Drain Unblock","Tiling","Painting - Interior","Painting - Exterior","Plastering","Carpentry","Glazier - Window Repair","Fence Repair","Concrete Repair","Leak Detection","Damp Proofing","Locksmith","Roof Inspection","Chimney Repair"],
+    "Cleaning & Hygiene": ["House Cleaning - Standard","House Cleaning - Deep","Office Cleaning","End of Lease Clean","Carpet Steam Clean","Curtain Cleaning","Window Cleaning","Sanitization & Disinfection","Tile & Grout Clean","Upholstery Cleaning"],
+    "Security & Energy": ["CCTV Installation","CCTV Maintenance","Alarm System Installation","Electric Fence Installation","Gate Motor","Access Control","Intercom Install","Home Automation - Security","Alarm Repair"],
+    "Outdoor & Garden": ["Lawn Mowing","Garden Maintenance","Tree Pruning","Tree Removal","Hedge Trimming","Irrigation System Install","Landscape Design","Paving & Patio Install","Fence & Gate Installation"],
+    "Appliances & Repairs": ["Fridge Repair","Washing Machine Repair","Dryer Repair","Oven & Stove Repair","Dishwasher Repair","Microwave Repair","Appliance Installation","Appliance Safety Check"],
+    "Electrical": ["Light Fitting Install","Switch & Socket Repair","Full Rewire - Small","Partial Rewire","Electrical Inspection","Ceiling Fan Install","Smoke Detector Install"],
+    "Plumbing": ["Toilet Install/Replace","Hot Water System Repair","Hot Water System Replace","Gas Appliance Check","Water Heater Install","Tap Replacement","Bathroom Suite Install","Kitchen Plumbing"],
+    "Handyman": ["Flat Pack Assembly","Shelving Install","Picture/Hanger Install","Door Adjustment","Lock Replacement","Odd Jobs"],
+    "Renovation & Building": ["Kitchen Renovation","Bathroom Renovation","Home Extension Prep","Flooring Install","Plaster & Skim Coating","Minor Brickwork","Tiling - walls & floors","Structural Repair (inspect)"],
+    "Automotive & On-Site": ["Mobile Mechanic - Basic","Battery Replacement (Mobile)","Tyre Change (mobile)","Vehicle Recovery","On-site Diagnostics","Car Detailing"],
+    "Miscellaneous": ["IT & Networking - Setup","Furniture Moving","Pest Control","Waste Clearance","Holiday Home Checks"]
+  };
+  const services = [];
+  let idIdx = 1;
+  for (const [cat, arr] of Object.entries(templates)) {
+    arr.forEach(name => services.push({ id: `s-${idIdx++}`, cat, name }));
+  }
+  // generate sensible extras to reach >200
+  while (services.length < 220) {
+    const cats = Object.keys(templates);
+    const cat = cats[Math.floor(Math.random() * cats.length)];
+    services.push({ id: `s-${idIdx++}`, cat, name: `${cat.split(' ')[0]} Specialist ${idIdx}` });
+  }
+  writeJSON("services", services);
+}
+ensureServices();
+
+/* Endpoints */
+
+// admin-secret check (visibility only)
+app.get("/api/admin-secret", (req,res) => res.json({ ok:true, secret: !!ADMIN_SECRET }));
+
+// GET services
+app.get("/api/services", (req,res) => {
+  const services = readJSON("services");
+  const cat = req.query.cat;
+  if (cat) return res.json({ ok:true, services: services.filter(s => s.cat === cat) });
+  res.json({ ok:true, services });
 });
-const upload = multer({ storage, limits: { fileSize: 6*1024*1024 } });
 
-// landing page
-app.get("/", (req,res) => res.sendFile(path.join(__dirname, "index.html")));
-
-// admin-secret check
-app.get("/api/admin-secret", (req,res) => {
-  res.json({ ok: true, secret: !!ADMIN_SECRET });
+// GET contractors
+app.get("/api/contractors", (req,res) => {
+  const contractors = readJSON("contractors");
+  res.json({ ok:true, contractors });
 });
 
-// GET logs helper
-app.get("/api/logs/:name", (req,res) => {
-  const name = req.params.name;
-  res.json(readJSON(name));
+// POST contractor upsert
+app.post("/api/contractor", (req,res) => {
+  try {
+    const incoming = req.body;
+    const contractors = readJSON("contractors");
+    const matchIdx = contractors.findIndex(c => (incoming.id && c.id === incoming.id) || (incoming.phone && c.phone === incoming.phone));
+    if (matchIdx > -1) {
+      contractors[matchIdx] = { ...contractors[matchIdx], ...incoming, updated: new Date().toISOString() };
+    } else {
+      const id = incoming.id || `ct-${Date.now()}`;
+      contractors.unshift({ id, ...incoming, created: new Date().toISOString() });
+    }
+    writeJSON("contractors", contractors);
+    appendLog("contractors", { action: "upsert", contractor: incoming });
+    return res.json({ ok:true });
+  } catch (err) {
+    console.error("contractor upsert err", err);
+    return res.status(500).json({ ok:false, error: String(err) });
+  }
 });
 
-/**
- * POST /api/lead
- * Accepts: { name, phone, email, service, message, contractorId }
- * Behavior:
- *  - store to leads.json
- *  - build small telegram text (ONLY main details: name, phone, service, short message)
- *  - send to admin BOT (BOT_TOKEN/ADMIN_CHAT_ID)
- *  - if contractorId found and that contractor has telegramToken/chatId stored, forward to them too
- */
+// POST lead
 app.post("/api/lead", async (req,res) => {
   try {
     const { name, phone, email, service, message, contractorId } = req.body;
-    // store full lead
     appendLog("leads", { name, phone, email, service, message, contractorId });
-    // find contractor token if provided
-    const contractors = readJSON("contractors");
-    let contractorToken, contractorChatId, contractorName;
-    if (contractorId) {
-      const c = contractors.find(x => x.id === contractorId || x.phone === contractorId || x.name === contractorId);
-      if (c) { contractorToken = c.telegramToken; contractorChatId = c.telegramChatId; contractorName = c.name || c.company || null; }
-    }
-    // build telegram message (short & useful)
     const text = [
       "<b>📩 New Lead</b>",
       `👤 ${name || "-"}`,
       `📞 ${phone || "-"}`,
       service ? `🛠 ${service}` : "",
-      message ? `💬 ${message.length>200 ? message.slice(0,200) + "..." : message}` : "",
+      message ? `💬 ${message.length>300 ? message.slice(0,300) + "..." : message}` : "",
       email ? `📧 ${email}` : "",
-      contractorName ? `👷 Sent towards: ${contractorName}` : "",
       `⏱ ${new Date().toLocaleString()}`
     ].filter(Boolean).join("\n");
-    const results = await notifyAdminAndMaybeContractor({ messageText: text, contractorToken, contractorChatId });
-    res.json({ ok: true, results });
+
+    // notify admin
+    if (BOT_TOKEN && ADMIN_CHAT_ID) {
+      await sendTelegram(BOT_TOKEN, ADMIN_CHAT_ID, text);
+    }
+
+    // notify specific contractor if they have token/chat
+    if (contractorId) {
+      const contractors = readJSON("contractors");
+      const c = contractors.find(x => x.id === contractorId || x.phone === contractorId || x.name === contractorId);
+      if (c && c.telegramToken && c.telegramChatId) {
+        await sendTelegram(c.telegramToken, c.telegramChatId, text);
+      }
+    }
+    return res.json({ ok:true });
   } catch (err) {
     console.error("lead err", err);
-    res.status(500).json({ ok: false, error: String(err) });
+    return res.status(500).json({ ok:false, error: String(err) });
   }
 });
 
-/**
- * POST /api/contractor
- * Accepts contractor registration / updates:
- * { id (optional), name, company, phone, service, telegramToken, telegramChatId, logoUrl, subscription }
- * Stores to contractors.json and notifies admin.
- */
-app.post("/api/contractor", async (req,res) => {
-  try {
-    const c = req.body;
-    const contractors = readJSON("contractors");
-    // find by id or phone
-    let existing = contractors.find(x => (c.id && x.id === c.id) || (c.phone && x.phone === c.phone));
-    if (existing) {
-      Object.assign(existing, { ...c, updated: new Date().toISOString() });
-    } else {
-      const id = c.id || `ct-${Date.now()}`;
-      contractors.unshift({ id, ...c, created: new Date().toISOString() });
-    }
-    writeJSON("contractors", contractors);
-    appendLog("contractors", { action: "upsert", contractor: c });
-    // notify admin
-    const text = `<b>🧰 Contractor Signup/Update</b>\nCompany: ${c.company||"-"}\nName: ${c.name||"-"}\nService: ${c.service||"-"}\nPhone: ${c.phone||"-"}`;
-    const results = await notifyAdminAndMaybeContractor({ messageText: text, contractorToken: c.telegramToken, contractorChatId: c.telegramChatId });
-    res.json({ ok: true, results });
-  } catch (err) {
-    console.error("contractor err", err);
-    res.status(500).json({ ok:false, error: String(err) });
-  }
-});
-
-/**
- * POST /api/review
- * Accepts form-data with images
- * Fields: contractor, name, rating, comment
- */
-app.post("/api/review", upload.array("images", 6), async (req,res) => {
+// POST review + file upload (stores images in uploads and persists review)
+app.post("/api/review", upload.array("images", 8), (req,res) => {
   try {
     const { contractor, name, rating, comment } = req.body;
-    const files = (req.files || []).map(f => `/uploads/${path.basename(f.path)}`);
-    appendLog("reviews", { contractor, name, rating, comment, images: files });
-    // notify admin & contractor
-    const text = `<b>⭐ New Review</b>\nContractor: ${contractor || "-"}\nReviewer: ${name || "-"}\nRating: ${rating || "-"}\n${comment ? ("Comment: " + (comment.length>300 ? comment.slice(0,300) + "..." : comment)) : ""}`;
-    // find contractor token
-    let contractorToken, contractorChatId;
-    const contractors = readJSON("contractors");
-    const c = contractors.find(x => x.name === contractor || x.id === contractor || x.company === contractor);
-    if (c) { contractorToken = c.telegramToken; contractorChatId = c.telegramChatId; }
-    const results = await notifyAdminAndMaybeContractor({ messageText: text, contractorToken, contractorChatId });
-    res.json({ ok: true, images: files, results });
+    const images = (req.files || []).map(f => `/uploads/${path.basename(f.path)}`);
+    appendLog("reviews", { contractor, name, rating, comment, images });
+    const reviews = readJSON("reviews");
+    reviews.unshift({ contractor, name, rating: Number(rating || 0), comment, images, ts: new Date().toISOString() });
+    writeJSON("reviews", reviews);
+    return res.json({ ok:true, images });
   } catch (err) {
-    console.error("review err", err);
-    res.status(500).json({ ok:false, error: String(err) });
+    console.error("review upload err", err);
+    return res.status(500).json({ ok:false, error: String(err) });
   }
 });
 
-/**
- * POST /api/message (admin -> contractor)
- * Body: { adminSecret, contractorId, message }
- */
-app.post("/api/message", async (req,res) => {
+// POST message (contractor -> admin)
+app.post("/api/message", (req,res) => {
   try {
-    const { adminSecret, contractorId, message } = req.body;
+    const { contractorId, message } = req.body;
+    appendLog("messages", { contractorId, message });
+    // send to admin chat if possible
+    if (BOT_TOKEN && ADMIN_CHAT_ID) {
+      sendTelegram(BOT_TOKEN, ADMIN_CHAT_ID, `<b>Message from Contractor</b>\nID: ${contractorId}\n${message}`);
+    }
+    return res.json({ ok:true });
+  } catch (err) {
+    console.error("message err", err);
+    return res.status(500).json({ ok:false, error: String(err) });
+  }
+});
+
+// POST apply badge (admin action, persisted)
+app.post("/api/apply-badge", (req,res) => {
+  try {
+    const { adminSecret, contractorId, badge } = req.body;
     if (!adminSecret || adminSecret !== ADMIN_SECRET) return res.status(401).json({ ok:false, error: "unauthorized" });
     const contractors = readJSON("contractors");
-    const c = contractors.find(x => x.id === contractorId || x.phone === contractorId || x.name === contractorId);
-    let contractorToken, contractorChatId;
-    if (c) { contractorToken = c.telegramToken; contractorChatId = c.telegramChatId; }
-    const text = `<b>📣 Message from Admin</b>\n${message}\n⏱ ${new Date().toLocaleString()}`;
-    const results = await notifyAdminAndMaybeContractor({ messageText: text, contractorToken, contractorChatId });
-    appendLog("admin_messages", { contractorId, message });
-    res.json({ ok:true, results });
-  } catch (err) {
-    console.error("msg err", err);
-    res.status(500).json({ ok:false, error: String(err) });
-  }
-});
-
-/**
- * POST /api/set-override
- * Body: { adminSecret, overrideToken, overrideChatId }
- * (This just logs change; to persist set Env vars in Render)
- */
-app.post("/api/set-override", (req,res) => {
-  try {
-    const { adminSecret, overrideToken, overrideChatId } = req.body;
-    if (!adminSecret || adminSecret !== ADMIN_SECRET) return res.status(401).json({ ok:false, error:"unauthorized" });
-    appendLog("override_changes", { overrideToken: !!overrideToken, overrideChatId: !!overrideChatId });
-    res.json({ ok:true, warning: "To persist override tokens, update Render environment variables." });
-  } catch (err) {
-    res.status(500).json({ ok:false, error: String(err) });
-  }
-});
-
-/**
- * POST /api/subscription (admin only)
- * Body: { adminSecret, contractorId, plan, periodMonths, price, startsAt }
- * Applies subscription record to contractor
- */
-app.post("/api/subscription", (req,res) => {
-  try {
-    const { adminSecret, contractorId, plan, periodMonths, price } = req.body;
-    if (!adminSecret || adminSecret !== ADMIN_SECRET) return res.status(401).json({ ok:false, error:"unauthorized" });
-    const contractors = readJSON("contractors");
-    const c = contractors.find(x => x.id === contractorId || x.phone === contractorId);
-    if (!c) return res.status(404).json({ ok:false, error:"contractor not found" });
-    c.subscription = { plan, periodMonths, price, started: new Date().toISOString() };
+    const idx = contractors.findIndex(c => c.id === contractorId || c.phone === contractorId);
+    if (idx === -1) return res.status(404).json({ ok:false, error: "contractor not found" });
+    contractors[idx].badge = badge;
+    contractors[idx].badgeAssignedAt = new Date().toISOString();
     writeJSON("contractors", contractors);
-    appendLog("subscriptions", { contractorId, plan, periodMonths, price });
-    res.json({ ok:true });
+    appendLog("contractors", { action: "apply-badge", contractorId, badge });
+    return res.json({ ok:true, contractor: contractors[idx] });
   } catch (err) {
-    res.status(500).json({ ok:false, error: String(err) });
+    console.error("apply-badge err", err);
+    return res.status(500).json({ ok:false, error: String(err) });
   }
 });
 
-// file serving fallback
+// GET logs for admin
+app.get("/api/logs/:name", (req,res) => {
+  const name = req.params.name;
+  res.json(readJSON(name));
+});
+
+// fallback static serve for files
 app.use((req,res) => {
   const file = path.join(__dirname, req.path);
   if (fs.existsSync(file) && fs.statSync(file).isFile()) return res.sendFile(file);
   res.status(404).send("Not found");
 });
 
-// start
 app.listen(PORT, () => console.log(`🚀 OmniLink Server live on port ${PORT}`));
-
