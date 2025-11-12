@@ -20,4 +20,8 @@
     "firebase-functions-test": "^3.1.0"
   },
   "private": true
+}"dependencies": {
+  "express": "^4.19.2",
+  "dotenv": "^16.4.5",
+  "node-fetch": "^3.3.2"
 }
