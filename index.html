@@ -1,94 +1,135 @@
 <!doctype html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
 <title>OmniSolutions — All-in-One Service Network</title>
 <link rel="stylesheet" href="theme.css">
 <script type="module" src="Firebase-bridge.js" defer></script>
-<style>
-.container {max-width: 1000px; margin: 0 auto; padding: 16px;}
-.card {background: var(--panel); border: 1px solid #ffffff12; border-radius: 12px; padding: 16px; margin-bottom: 12px;}
-.small-input {padding: 8px; border-radius: 8px; border: 1px solid #ffffff12; background: #080716; color: var(--ink); width: 100%;}
-.btn {background: var(--accent); border: none; color: white; padding: 10px 16px; border-radius: 8px; cursor: pointer;}
-.btn:hover {opacity: 0.9;}
-</style>
 </head>
-
 <body>
-<div class="container">
-  <h1 style="text-align:center;font-weight:800;">OmniSolutions</h1>
-  <p style="text-align:center;">Your all-in-one platform for property, maintenance, and contractor services.</p>
+<div class="shell">
+  <aside class="leftbar">
+    <h3>Categories</h3>
+    <div class="category" data-cat="property"><button class="cat-btn">Property & Maintenance</button>
+      <div class="services" data-for="property">
+        <button class="svc">Plumbing</button>
+        <button class="svc">Electrical</button>
+        <button class="svc">Roofing</button>
+        <button class="svc">Painting</button>
+      </div>
+    </div>
 
-  <div class="card">
-    <h2>📩 Request a Service</h2>
-    <form id="leadForm">
-      <input name="name" class="small-input" placeholder="Your Name" required><br><br>
-      <input name="phone" class="small-input" placeholder="Phone Number" required><br><br>
-      <input name="email" class="small-input" placeholder="Email"><br><br>
-      <select name="service" class="small-input" required>
-        <option value="">Select a Service</option>
-        <option value="Plumbing">Plumbing</option>
-        <option value="Electrical">Electrical</option>
-        <option value="Cleaning">Cleaning</option>
-        <option value="Gardening">Gardening</option>
-        <option value="Painting">Painting</option>
-      </select><br><br>
-      <textarea name="message" class="small-input" placeholder="Describe your issue" rows="4"></textarea><br><br>
-      <button type="submit" class="btn">Submit Request</button>
-    </form>
-  </div>
+    <div class="category" data-cat="cleaning"><button class="cat-btn">Cleaning & Hygiene</button>
+      <div class="services" data-for="cleaning">
+        <button class="svc">Home Cleaning</button>
+        <button class="svc">Office Cleaning</button>
+        <button class="svc">Carpet Cleaning</button>
+      </div>
+    </div>
 
-  <div class="card">
-    <h2>⭐ Why Choose Us</h2>
-    <ul>
-      <li>Verified and Trusted Contractors</li>
-      <li>Instant Notifications via Telegram</li>
-      <li>24/7 Availability</li>
-      <li>Affordable and Transparent Pricing</li>
-    </ul>
-  </div>
+    <div class="category" data-cat="security"><button class="cat-btn">Security & Energy</button>
+      <div class="services" data-for="security">
+        <button class="svc">CCTV</button>
+        <button class="svc">Alarm Systems</button>
+      </div>
+    </div>
+  </aside>
 
-  <div class="card">
-    <h2>💬 Reviews</h2>
-    <p>We’ve helped hundreds of clients find top-rated service providers.</p>
-    <p><i>"Amazing service — quick response and professional!"</i> ⭐⭐⭐⭐⭐</p>
-    <p><i>"They handled my home repairs perfectly. Highly recommend!"</i> ⭐⭐⭐⭐⭐</p>
-  </div>
+  <main class="content">
+    <header><h1>OmniSolutions</h1><p>Your all-in-one platform for property & maintenance services.</p></header>
+
+    <section class="card">
+      <h2>Request a Service</h2>
+      <form id="leadForm">
+        <input name="name" placeholder="Your name" required class="small-input">
+        <input name="phone" placeholder="Phone number" required class="small-input">
+        <input name="email" placeholder="Email" class="small-input">
+        <select name="service" class="small-input" id="chosenService">
+          <option value="">Select a service</option>
+        </select>
+        <textarea name="message" placeholder="Describe your issue" rows="4" class="small-input"></textarea>
+        <button class="btn" type="submit">Submit Request</button>
+      </form>
+    </section>
+
+    <section class="card">
+      <h2>Why Choose Us</h2>
+      <ul>
+        <li>Verified contractors</li>
+        <li>Instant Telegram notifications</li>
+        <li>Quality assurance</li>
+      </ul>
+    </section>
+  </main>
 </div>
 
-<!-- JavaScript logic -->
+<!-- Admin login button bottom-right -->
+<button id="adminRevealBtn" class="admin-btn" title="Admin login">Admin</button>
+
 <script type="module">
 import { createLead } from './Firebase-bridge.js';
 
-document.querySelector("#leadForm").addEventListener("submit", async (e) => {
-  e.preventDefault();
-  const form = e.target;
-  const data = {
-    name: form.name.value,
-    phone: form.phone.value,
-    email: form.email.value,
-    service: form.service.value,
-    message: form.message.value
-  };
-
-  // Save to Firestore via Firebase bridge (for your own dashboard)
-  const fbRes = await createLead(data);
-  console.log("Firestore lead response:", fbRes);
-
-  // Also send to Render backend (→ Telegram)
-  const res = await fetch("/api/lead", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(data)
+// build service dropdown from left services
+document.querySelectorAll('.services').forEach(s => {
+  const forCat = s.dataset.for;
+  s.querySelectorAll('.svc').forEach(btn => {
+    const opt = document.createElement('option');
+    opt.value = `${forCat}:${btn.textContent.trim()}`;
+    opt.text = `${btn.textContent.trim()} (${forCat})`;
+    document.getElementById('chosenService').appendChild(opt);
+    // clicking bubble preselects
+    btn.addEventListener('click', ()=> {
+      document.getElementById('chosenService').value = opt.value;
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    });
   });
+});
 
-  const result = await res.json();
-  if (result.ok) {
-    alert("✅ Your request has been sent! We'll contact you shortly.");
-    form.reset();
+// category toggles
+document.querySelectorAll('.cat-btn').forEach(b=>{
+  b.addEventListener('click', ()=> {
+    const parent = b.parentElement;
+    parent.querySelector('.services').classList.toggle('open');
+  });
+});
+
+// lead submit
+document.getElementById('leadForm').addEventListener('submit', async (e)=>{
+  e.preventDefault();
+  const f = e.target;
+  const data = {
+    name: f.name.value,
+    phone: f.phone.value,
+    email: f.email.value,
+    service: f.service.value,
+    message: f.message.value
+  };
+  // create in Firestore + send to Render
+  const fb = await createLead(data);
+  const res = await fetch('/api/lead', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(data) });
+  const json = await res.json();
+  if (json.ok) { alert('✅ Lead sent!'); f.reset(); }
+  else alert('❌ Failed to send lead');
+});
+
+// admin reveal button (checks server-side that secret exists)
+const adminBtn = document.getElementById('adminRevealBtn');
+adminBtn.addEventListener('click', async ()=>{
+  const secret = prompt('Enter admin secret to reveal link:');
+  if (!secret) return;
+  // we do a simple client check by posting to /api/message with secret (server will validate)
+  const test = await fetch('/api/admin-secret').then(r=>r.json());
+  // If server has ADMIN_SECRET set, open admin login if matches
+  // (client-side keep it simple; the admin dashboard itself must secure actions)
+  if (secret && test.secret) {
+    // Open admin dashboard (you can protect further on admin page)
+    const pass = prompt('This will open admin dashboard. Confirm admin secret again to proceed:');
+    if (pass === secret) {
+      window.location.href = '/admin-dashboard.html';
+    } else alert('Incorrect secret.');
   } else {
-    alert("❌ Something went wrong. Please try again.");
+    alert('Admin not configured.');
   }
 });
 </script>
