@@ -1,79 +1,80 @@
 <!doctype html>
 <html>
-<head>
-<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Admin Dashboard — OmniSolutions</title>
-<link rel="stylesheet" href="theme.css">
-</head>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Admin — OmniSolutions</title><link rel="stylesheet" href="theme.css"></head>
 <body>
 <div class="admin-shell">
   <header class="admin-header">
     <h1>Admin Dashboard</h1>
-    <div class="controls">
-      <label>Override Bot Token<input id="overrideToken" class="small-input"></label>
-      <label>Override Chat ID<input id="overrideChat" class="small-input"></label>
-      <button id="saveOverride" class="btn">Save (note: update Render env for persistence)</button>
+    <div style="display:flex;gap:8px;align-items:center">
+      <div>Badge/Icon Library: <select id="badgeSelect"><option value="">— select —</option></select></div>
+      <button id="themeEditorBtn" class="btn">Theme Editor</button>
     </div>
   </header>
 
   <main class="admin-main">
     <section class="card">
-      <h3>Leads (recent)</h3>
-      <div id="leadsList"></div>
+      <h3>Contractors</h3>
+      <div id="contractorsAdminList"></div>
     </section>
 
     <section class="card">
-      <h3>Contractors (recent)</h3>
-      <div id="contractorsList"></div>
+      <h3>Leads</h3>
+      <div id="leadsAdminList"></div>
     </section>
 
     <section class="card">
-      <h3>Send Message to Contractor</h3>
-      <form id="msgForm">
-        <input name="contractorToken" placeholder="Contractor Bot Token (optional)" class="small-input">
-        <input name="contractorChatId" placeholder="Contractor Chat ID (optional)" class="small-input">
-        <textarea name="message" placeholder="Message" class="small-input" rows="4"></textarea>
-        <input name="adminSecret" placeholder="Admin secret" class="small-input" required>
-        <button class="btn" type="submit">Send Message</button>
-      </form>
+      <h3>Actions</h3>
+      <div>
+        <label>Admin override token<input id="overrideToken" class="small-input"></label>
+        <label>Admin override chat id<input id="overrideChat" class="small-input"></label>
+        <button id="saveOverride" class="btn">Save override (logs change)</button>
+      </div>
+      <hr>
+      <div>
+        <h4>Subscription controls</h4>
+        <div>Set subscription: <select id="subPlan"><option value="free">Free</option><option value="monthly_299">Monthly R299</option><option value="monthly_499">Monthly R499 (Premium)</option></select></div>
+        <button id="applySub" class="btn">Apply (UI demo)</button>
+      </div>
     </section>
   </main>
 </div>
 
-<script>
-async function loadLogs() {
-  const leads = await fetch('/api/logs/leads').then(r=>r.json());
-  const contractors = await fetch('/api/logs/contractors').then(r=>r.json());
-  const leadsList = document.getElementById('leadsList');
-  leadsList.innerHTML = leads.map(l=>`<div class="mini">${l.ts} — ${l.name||'-'} — ${l.phone||'-'} — ${l.service||'-'}</div>`).join('');
-  const contractorsList = document.getElementById('contractorsList');
-  contractorsList.innerHTML = contractors.map(c=>`<div class="mini">${c.ts} — ${c.company||c.name||'-'} — ${c.phone||'-'} — ${c.service||'-'}</div>`).join('');
-}
+<!-- theme modal -->
+<div id="adminThemeModal" class="hidden" style="position:fixed;right:18px;top:100px;background:var(--panel);padding:12px;border-radius:12px;z-index:9999">
+  <h4>Admin Theme Editor</h4>
+  <label>Accent color: <input id="adminAccent" type="color" value="#7b61ff"/></label><br><br>
+  <input id="adminGradient" type="range" min="0" max="360" value="260"><label>Hue</label><br><br>
+  <button id="applyAdminTheme" class="btn">Apply</button>
+  <button id="closeAdminTheme" class="btn">Close</button>
+</div>
 
-document.getElementById('msgForm').addEventListener('submit', async (e)=>{
-  e.preventDefault();
-  const f = e.target;
-  const payload = {
-    adminSecret: f.adminSecret.value,
-    contractorToken: f.contractorToken.value,
-    contractorChatId: f.contractorChatId.value,
-    message: f.message.value
-  };
-  const res = await fetch('/api/message', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload)});
-  const json = await res.json();
-  if (json.ok) alert('Message sent');
-  else alert('Failed: '+ (json.error||'unknown'));
-});
+<script>
+async function loadAdmin() {
+  const leads = await fetch('/api/logs/leads').then(r=>r.json()).catch(()=>[]);
+  const contractors = await fetch('/api/logs/contractors').then(r=>r.json()).catch(()=>[]);
+  document.getElementById('leadsAdminList').innerHTML = leads.slice(0,30).map(l=>`<div class="mini">${l.ts} — ${l.name||'-'} — ${l.phone||'-'} — ${l.service||'-'} </div>`).join('');
+  document.getElementById('contractorsAdminList').innerHTML = contractors.slice(0,50).map(c=>`<div class="mini">${c.ts} — ${c.company||c.name||'-'} — ${c.phone||'-'} — ${c.service||'-'} <button class="btn" onclick="deactivate('${c.id||c.phone||c.ts}')">Deactivate</button> <button class='btn' onclick="editContractor('${c.id||c.phone||c.ts}')">Edit</button></div>`).join('');
+}
+function deactivate(id){ if(confirm('Deactivate contractor?')) alert('Deactivated (demo). For real, call server endpoint to update DB.'); }
+function editContractor(id){ window.location.href = `/contractor-dashboard.html`; }
 
 document.getElementById('saveOverride').addEventListener('click', async ()=>{
   const token = document.getElementById('overrideToken').value;
   const chat = document.getElementById('overrideChat').value;
-  // advise: update Render environment variables for persistence
-  alert('To persist override, update Render environment variables. This UI only logs the change.');
-  await fetch('/api/set-override', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ adminSecret: prompt('Enter admin secret:'), overrideToken: token, overrideChatId: chat }) });
+  await fetch('/api/set-override', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ adminSecret: prompt('Admin secret:'), overrideToken: token, overrideChatId: chat })});
+  alert('Override logged. To persist, update Render environment variables.');
+});
+document.getElementById('applySub').addEventListener('click', ()=> alert('Subscription applied (demo). Integrate payment gateway to charge.)');
+
+document.getElementById('themeEditorBtn').addEventListener('click', ()=> document.getElementById('adminThemeModal').classList.remove('hidden'));
+document.getElementById('closeAdminTheme').addEventListener('click', ()=> document.getElementById('adminThemeModal').classList.add('hidden'));
+document.getElementById('applyAdminTheme').addEventListener('click', ()=> {
+  const accent = document.getElementById('adminAccent').value;
+  document.documentElement.style.setProperty('--accent', accent);
+  alert('Theme applied locally. To persist site-wide store the style server-side.');
 });
 
-window.addEventListener('load', loadLogs);
+window.addEventListener('load', loadAdmin);
 </script>
 </body>
 </html>
