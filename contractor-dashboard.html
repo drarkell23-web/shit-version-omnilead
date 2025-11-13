@@ -1,144 +1,158 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Contractor Dashboard — OmniSolutions</title>
-  <link rel="stylesheet" href="/contractor-dashboard.css">
-  <script type="module" src="/contractor-dashboard.js" defer></script>
+<meta charset="UTF-8">
+<title>Contractor Dashboard — Omni-Solutions</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="stylesheet" href="/contractor-dashboard.css">
+
+<!-- Supabase -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
 </head>
-<body class="dash-bg">
-  <div class="dash-shell">
-    <header class="dash-top">
-      <div class="dash-brand">
-        <div id="logoPreview" class="logo-preview">OM</div>
-        <div>
-          <div class="dash-title">Contractor Dashboard</div>
-          <div class="dash-sub">Manage your profile, leads & reviews</div>
-        </div>
-      </div>
+<body>
 
-      <div class="dash-actions">
-        <button id="logoutBtn" class="btn-ghost">Logout</button>
-        <button id="saveProfileBtn" class="btn-primary">Save Profile</button>
-      </div>
-    </header>
-
-    <div class="dash-body">
-      <aside class="left-panel">
-        <div class="card">
-          <h3>Profile</h3>
-          <label class="lbl">Company / Name</label>
-          <input id="fieldName" placeholder="Company or Name">
-          <label class="lbl">Phone</label>
-          <input id="fieldPhone" placeholder="+27...">
-          <label class="lbl">Email</label>
-          <input id="fieldEmail" placeholder="email@example.com">
-          <label class="lbl">Service Category</label>
-          <select id="fieldService">
-            <option value="">Select service</option>
-          </select>
-
-          <label class="lbl">Company Logo (upload)</label>
-          <input id="logoInput" type="file" accept="image/*">
-          <div class="muted small">Logo stored in your profile (base64 fallback) — you can paste a URL below too.</div>
-          <input id="logoURL" placeholder="Paste logo URL (optional)">
-
-          <label class="lbl">Telegram Bot Token</label>
-          <input id="fieldTelegramToken" placeholder="bot token (optional)">
-
-          <label class="lbl">Telegram Chat ID</label>
-          <input id="fieldTelegramChatId" placeholder="chat id (optional)">
-
-          <label class="lbl">Theme Color</label>
-          <div style="display:flex;gap:8px;align-items:center">
-            <input id="colorPicker" type="color">
-            <input id="hueRange" type="range" min="0" max="360" value="240">
-          </div>
-
-          <div style="margin-top:10px">
-            <button id="uploadLogoBtn" class="btn-ghost">Apply Logo</button>
-          </div>
-        </div>
-
-        <div class="card premium-block">
-          <h3>Premium Upgrade</h3>
-          <div class="muted small">Premium features unlock: unlimited ad posts, advanced analytics, priority leads, theme editor & more.</div>
-          <div class="price-badges">
-            <div class="price">R350 / month <div class="muted small">1 month</div></div>
-            <div class="price">R1999 <div class="muted small">6 months</div></div>
-            <div class="price">R3599 <div class="muted small">1 year</div></div>
-          </div>
-          <div style="margin-top:10px">
-            <button id="upgradeBtn" class="btn-primary">Upgrade to Premium</button>
-          </div>
-        </div>
-      </aside>
-
-      <main class="center-panel">
-        <div class="card">
-          <div style="display:flex;justify-content:space-between;align-items:center;">
-            <h3>Leads & Messages</h3>
-            <div class="muted small">You will receive leads here and on Telegram (if configured)</div>
-          </div>
-
-          <div class="chat-wrap">
-            <div id="chatBox" class="chat-box" aria-live="polite"></div>
-            <div class="chat-controls">
-              <input id="msgInput" placeholder="Message to admin (e.g. need help)" />
-              <button id="msgSend" class="btn-primary">Send</button>
-            </div>
-          </div>
-        </div>
-
-        <div class="card" style="margin-top:12px">
-          <h3>Your Reviews</h3>
-          <div id="reviewsList" class="reviews-list"></div>
-
-          <div style="margin-top:10px">
-            <label class="lbl">Add Review (demo / premium)</label>
-            <input id="reviewName" placeholder="Your name">
-            <select id="reviewStars">
-              <option value="5">5 stars</option>
-              <option value="4">4 stars</option>
-              <option value="3">3 stars</option>
-              <option value="2">2 stars</option>
-              <option value="1">1 star</option>
-            </select>
-            <textarea id="reviewComment" placeholder="Review text"></textarea>
-            <input id="reviewImages" type="file" accept="image/*" multiple>
-            <button id="submitReview" class="btn-primary">Submit Review</button>
-          </div>
-        </div>
-      </main>
-
-      <aside class="right-panel">
-        <div class="card">
-          <h3>Analytics (preview)</h3>
-          <canvas id="leadsChart" width="300" height="150"></canvas>
-          <div class="muted small" style="margin-top:8px">Graph shows example data until real leads arrive.</div>
-        </div>
-
-        <div class="card" style="margin-top:12px">
-          <h3>Profile Preview</h3>
-          <div id="profilePreview" class="profile-preview">
-            <div id="previewLogo" class="preview-logo">OM</div>
-            <div>
-              <div id="previewName" style="font-weight:700">Your Company</div>
-              <div id="previewService" class="muted small">Service category</div>
-              <div id="previewRating" class="muted small">⭐ 4.8 (demo)</div>
-            </div>
-          </div>
-          <div style="margin-top:10px">
-            <button id="visitPublicBtn" class="btn-ghost">Open public page</button>
-          </div>
-        </div>
-
-      </aside>
+<!-- Side Navigation -->
+<div id="sidebar">
+    <div id="side-logo">
+        <img id="contractorLogo" src="/assets/default-logo.png">
+        <div id="contractorNameSide">My Business</div>
     </div>
-  </div>
 
-  <!-- admin-only small badge visible just to you -->
-  <div id="adminBadge" class="admin-badge hidden">Admin</div>
+    <div class="nav-section">Dashboard</div>
+    <div class="nav-item" onclick="showPage('overview')">📊 Overview</div>
+
+    <div class="nav-section">Profile</div>
+    <div class="nav-item" onclick="showPage('business')">🏢 Business Info</div>
+    <div class="nav-item" onclick="showPage('telegram')">🤖 Telegram</div>
+
+    <div class="nav-section">Content</div>
+    <div class="nav-item" onclick="showPage('gallery')">🖼️ Gallery</div>
+    <div class="nav-item" onclick="showPage('reviews')">⭐ Reviews</div>
+
+    <div class="nav-section">Communication</div>
+    <div class="nav-item" onclick="showPage('messages')">✉ Message Admin</div>
+
+    <div class="nav-section">Appearance</div>
+    <div class="nav-item premium" onclick="showPage('theme')">🎨 Theme Settings (Premium)</div>
+
+    <div class="nav-section">Account</div>
+    <div class="nav-item" onclick="logout()">🚪 Logout</div>
+</div>
+
+<!-- Main Content -->
+<div id="content">
+
+    <!-- OVERVIEW -->
+    <div class="page" id="overview">
+        <h2>📊 Dashboard Overview</h2>
+        <div class="cards">
+            <div class="card">Leads This Month<br><span id="leadsCount">0</span></div>
+            <div class="card">Total Reviews<br><span id="reviewsCount">0</span></div>
+            <div class="card">Gallery Images<br><span id="galleryCount">0</span></div>
+        </div>
+
+        <h3>Performance Graph</h3>
+        <div id="graphPlaceholder">Your performance graph will appear here once you receive data.</div>
+    </div>
+
+    <!-- BUSINESS INFO -->
+    <div class="page" id="business">
+        <h2>🏢 Business Information</h2>
+        <label>Business Name</label>
+        <input id="bizName">
+
+        <label>Category</label>
+        <select id="bizCategory">
+            <option value="">Select category…</option>
+            <option>Plumbing</option>
+            <option>Electrical</option>
+            <option>Building</option>
+            <option>Cleaning</option>
+            <option>Security</option>
+            <option>Landscaping</option>
+            <option>Painting</option>
+            <option>Handyman</option>
+        </select>
+
+        <label>Company Logo</label>
+        <input type="file" id="logoUpload">
+
+        <button onclick="saveBusiness()">Save Business Info</button>
+    </div>
+
+    <!-- TELEGRAM -->
+    <div class="page" id="telegram">
+        <h2>🤖 Telegram Bot Setup</h2>
+
+        <label>Your Bot Token</label>
+        <input id="teleToken">
+
+        <label>Your Telegram Chat ID</label>
+        <input id="teleChat">
+
+        <button onclick="saveTelegram()">Save Telegram Details</button>
+    </div>
+
+    <!-- GALLERY -->
+    <div class="page" id="gallery">
+        <h2>🖼️ Gallery Upload</h2>
+
+        <input type="file" id="galleryUpload" multiple accept="image/*">
+        <button onclick="uploadGallery()">Upload Images</button>
+
+        <h3>Your Gallery</h3>
+        <div id="galleryContainer"></div>
+    </div>
+
+    <!-- REVIEWS -->
+    <div class="page" id="reviews">
+        <h2>⭐ Upload a Review (1 Free)</h2>
+
+        <label>Client Name</label>
+        <input id="revName">
+
+        <label>Rating</label>
+        <select id="revRating">
+            <option>1</option>
+            <option>2</option>
+            <option>3</option>
+            <option>4</option>
+            <option selected>5</option>
+        </select>
+
+        <label>Review Comment</label>
+        <textarea id="revComment"></textarea>
+
+        <label>Images</label>
+        <input type="file" id="revImages" multiple accept="image/*">
+
+        <button onclick="uploadReview()">Upload Review</button>
+
+        <h3>Your Reviews</h3>
+        <div id="reviewsContainer"></div>
+    </div>
+
+    <!-- MESSAGES -->
+    <div class="page" id="messages">
+        <h2>✉ Message Admin</h2>
+        <textarea id="msgText" placeholder="Type your message…"></textarea>
+        <button onclick="sendMessage()">Send Message</button>
+    </div>
+
+    <!-- THEME -->
+    <div class="page" id="theme">
+        <h2>🎨 Theme Settings (Premium Required)</h2>
+        <p>Slide to change dashboard colour</p>
+        <input type="color" id="themeColor" onchange="applyTheme()">
+
+        <div class="premium-lock" id="premiumLock">
+            🔒 Upgrade to Premium to unlock full theme control.
+        </div>
+    </div>
+
+</div>
+
+<script src="/contractor-dashboard.js"></script>
 </body>
 </html>
