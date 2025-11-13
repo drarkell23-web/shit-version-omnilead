@@ -1,155 +1,260 @@
 <!doctype html>
-<html>
+<html lang="en">
 <head>
-<meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>Contractor Dashboard — Omni</title>
-<link rel="stylesheet" href="theme.css">
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Contractor Dashboard — OmniSolutions</title>
+
+  <!-- Tailwind Play CDN for quick styling (production: build with tailwind) -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+  <!-- tinycolor for color manip -->
+  <script src="https://cdn.jsdelivr.net/npm/tinycolor2@1.6.0/dist/tinycolor-min.js"></script>
+
+  <!-- Custom CSS (optional small file) -->
+  <link rel="stylesheet" href="contractor-dashboard.css">
+
+  <!-- Dashboard JS -->
+  <script type="module" src="contractor-dashboard.js" defer></script>
 </head>
-<body>
-<div style="display:flex;min-height:100vh">
-  <aside style="width:320px;padding:18px" class="card">
-    <div style="display:flex;gap:12px;align-items:center">
-      <img id="logoPreview" src="/assets/default-logo.png" alt="logo" style="width:64px;height:64px;border-radius:8px;object-fit:cover;background:#111">
-      <div>
-        <div id="companyDisplay" style="font-weight:800">Contractor</div>
-        <div class="small">ID: <span id="contractorId">--</span></div>
+<body class="bg-gradient-to-b from-[#070514] to-[#12061d] text-slate-100 antialiased">
+
+  <div class="min-h-screen flex">
+    <!-- Sidebar -->
+    <aside class="w-72 bg-[rgba(10,7,20,0.8)] border-r border-white/6 p-5 flex flex-col gap-4 fixed left-0 top-0 bottom-0">
+      <div class="flex items-center gap-3">
+        <div id="companyLogo" class="w-12 h-12 rounded-lg bg-gradient-to-r from-[#7b61ff] to-[#42b3ff]"></div>
+        <div>
+          <div class="font-bold text-lg">OmniSolutions</div>
+          <div class="text-xs text-slate-400">Contractor Dashboard</div>
+        </div>
+      </div>
+
+      <div class="mt-2">
+        <button id="btnOverview" class="w-full text-left px-3 py-2 rounded-lg bg-white/3 hover:bg-white/4">Overview</button>
+        <button id="btnJobs" class="w-full text-left px-3 py-2 rounded-lg mt-2 hover:bg-white/4">Jobs</button>
+        <button id="btnMessages" class="w-full text-left px-3 py-2 rounded-lg mt-2 hover:bg-white/4">Messages</button>
+        <button id="btnAds" class="w-full text-left px-3 py-2 rounded-lg mt-2 hover:bg-white/4">Create Ad</button>
+        <button id="btnReviews" class="w-full text-left px-3 py-2 rounded-lg mt-2 hover:bg-white/4">Reviews</button>
+        <button id="btnSettings" class="w-full text-left px-3 py-2 rounded-lg mt-2 hover:bg-white/4">Settings</button>
+      </div>
+
+      <div class="mt-auto">
+        <div class="text-xs text-slate-400">Subscription</div>
+        <div id="subInfo" class="mt-2 p-3 rounded-lg bg-gradient-to-r from-[#1f1430] to-[#0f1830]">
+          <div id="subTier" class="font-semibold">Free</div>
+          <div id="leadQuota" class="text-sm text-slate-300 mt-1">Leads remaining: <span id="leadsRemaining">10</span>/10</div>
+          <button id="upgradeBtn" class="mt-3 w-full bg-gradient-to-r from-[#7b61ff] to-[#42b3ff] text-black py-2 rounded-lg font-semibold">Upgrade to Premium</button>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Main area -->
+    <main class="flex-1 ml-72 p-8">
+      <div class="grid grid-cols-12 gap-6">
+
+        <!-- Left column (primary workspace) -->
+        <section class="col-span-8 space-y-6">
+          <!-- Top bar -->
+          <div class="flex items-center justify-between">
+            <div>
+              <h2 class="text-2xl font-extrabold">Welcome, <span id="contractorName">Your Company</span></h2>
+              <div class="text-sm text-slate-400">Contractor ID: <span id="contractorId">--</span></div>
+            </div>
+
+            <div class="flex items-center gap-3">
+              <button id="themeToggle" class="px-3 py-2 rounded-lg bg-white/4">Theme</button>
+              <button id="logoutBtn" class="px-3 py-2 rounded-lg bg-red-600">Logout</button>
+            </div>
+          </div>
+
+          <!-- Stats row -->
+          <div class="grid grid-cols-3 gap-4">
+            <div class="p-4 rounded-xl bg-gradient-to-b from-white/2 to-white/3 border border-white/5">
+              <div class="text-xs text-slate-400">Leads (30 days)</div>
+              <div class="text-3xl font-extrabold mt-2" id="leadsCount">0</div>
+              <div class="text-sm text-slate-400 mt-1">Total received</div>
+            </div>
+            <div class="p-4 rounded-xl bg-gradient-to-b from-white/2 to-white/3 border border-white/5">
+              <div class="text-xs text-slate-400">Active Jobs</div>
+              <div class="text-3xl font-extrabold mt-2" id="activeJobs">0</div>
+              <div class="text-sm text-slate-400 mt-1">In progress</div>
+            </div>
+            <div class="p-4 rounded-xl bg-gradient-to-b from-white/2 to-white/3 border border-white/5">
+              <div class="text-xs text-slate-400">Rating</div>
+              <div class="text-3xl font-extrabold mt-2" id="avgRating">0.0</div>
+              <div class="text-sm text-slate-400 mt-1">Average stars</div>
+            </div>
+          </div>
+
+          <!-- Graphs -->
+          <div class="grid grid-cols-2 gap-4">
+            <div class="p-4 rounded-xl bg-[rgba(255,255,255,0.02)] border border-white/5">
+              <div class="flex justify-between items-center">
+                <div class="font-semibold">Leads Over Time</div>
+                <div class="text-xs text-slate-400">Last 30 days</div>
+              </div>
+              <canvas id="leadsChart" class="mt-3"></canvas>
+            </div>
+
+            <div class="p-4 rounded-xl bg-[rgba(255,255,255,0.02)] border border-white/5">
+              <div class="flex justify-between items-center">
+                <div class="font-semibold">Badge mix</div>
+                <div class="text-xs text-slate-400">Distribution</div>
+              </div>
+              <canvas id="badgeChart" class="mt-3"></canvas>
+            </div>
+          </div>
+
+          <!-- Messages -->
+          <div class="p-4 rounded-xl bg-[rgba(255,255,255,0.02)] border border-white/5">
+            <div class="flex justify-between items-center">
+              <div class="font-semibold">Messages</div>
+              <div class="text-xs text-slate-400">Chat with admin & clients</div>
+            </div>
+            <div id="messageList" class="h-40 overflow-auto mt-3 space-y-2 p-2 bg-black/20 rounded-md"></div>
+            <div class="flex gap-2 mt-3">
+              <input id="msgInput" placeholder="Message to admin or client" class="flex-1 rounded-lg p-2 bg-transparent border border-white/6">
+              <button id="sendMsgBtn" class="px-4 py-2 rounded-lg bg-gradient-to-r from-[#7b61ff] to-[#42b3ff]">Send</button>
+            </div>
+          </div>
+
+          <!-- Reviews manager -->
+          <div class="p-4 rounded-xl bg-[rgba(255,255,255,0.02)] border border-white/5">
+            <div class="flex justify-between items-center">
+              <div class="font-semibold">Upload Review (Free: 1 image)</div>
+              <div class="text-xs text-slate-400">Premium: multiple images & edit</div>
+            </div>
+
+            <form id="reviewForm" class="mt-3 grid grid-cols-2 gap-3">
+              <input name="reviewer" placeholder="Reviewer name" class="p-2 bg-transparent border rounded-md col-span-1">
+              <select name="stars" class="p-2 bg-transparent border rounded-md col-span-1">
+                <option value="5">⭐⭐⭐⭐⭐</option>
+                <option value="4">⭐⭐⭐⭐</option>
+                <option value="3">⭐⭐⭐</option>
+                <option value="2">⭐⭐</option>
+                <option value="1">⭐</option>
+              </select>
+
+              <textarea name="comment" placeholder="Comment" class="p-2 bg-transparent border rounded-md col-span-2"></textarea>
+
+              <div class="col-span-2 flex items-center gap-3">
+                <input id="reviewFiles" type="file" accept="image/*" multiple class="text-sm" />
+                <button id="uploadReviewBtn" type="button" class="ml-auto bg-white/5 px-4 py-2 rounded-md">Upload Review</button>
+              </div>
+            </form>
+
+            <div id="reviewsList" class="mt-4 grid grid-cols-3 gap-3"></div>
+          </div>
+
+        </section>
+
+        <!-- Right column (Premium + Tools)  - this area is large and is the main premium push -->
+        <aside class="col-span-4 space-y-6">
+          <!-- PREMIUM BLOCK (occupies majority visually) -->
+          <div class="p-6 rounded-2xl bg-gradient-to-b from-[#3b1a5f] to-[#0d1630] border border-white/6 relative" style="min-height:460px;">
+            <div class="absolute right-5 top-5 px-3 py-1 rounded-full bg-amber-400/10 text-amber-300 text-xs">Premium Highlight</div>
+
+            <div class="flex items-start gap-4">
+              <img src="/data/uploads/assets/ChatGPT_Image_Nov_13_2025_05_08_40_AM.png" alt="logo" class="w-20 h-20 rounded-lg object-cover" />
+              <div>
+                <div class="text-xl font-extrabold">Upgrade to Premium</div>
+                <div class="text-sm text-slate-300 mt-1">Unlimited leads, advanced analytics, ad boosts & more</div>
+                <div class="text-sm text-amber-300 font-semibold mt-3">R 500 / month</div>
+              </div>
+            </div>
+
+            <ul class="mt-6 space-y-2 text-sm text-slate-300">
+              <li>• Unlimited Leads (priority routing)</li>
+              <li>• Multi-image review gallery + edit</li>
+              <li>• Theme & color customiser (multi-colour slider)</li>
+              <li>• Ad creator + 3 social post templates</li>
+              <li>• Highlighted in Top Contractors list</li>
+            </ul>
+
+            <div class="mt-6 flex gap-3">
+              <button id="purchasePremiumBtn" class="flex-1 bg-gradient-to-r from-[#ffb86b] to-[#ff6b9a] text-black font-bold py-3 rounded-xl">Get Premium</button>
+              <button id="learnMoreBtn" class="flex-1 border border-white/6 py-3 rounded-xl">Learn More</button>
+            </div>
+
+            <!-- Multi-colour slider (premium) -->
+            <div id="themeTools" class="mt-6 p-3 rounded-lg bg-[rgba(255,255,255,0.02)] hidden">
+              <div class="text-sm text-slate-300 font-semibold">Colour Theme (Premium)</div>
+              <div class="mt-3 grid grid-cols-2 gap-2">
+                <label class="text-xs text-slate-400">Accent Start</label>
+                <input id="accentStart" type="color" value="#7b61ff">
+                <label class="text-xs text-slate-400">Accent End</label>
+                <input id="accentEnd" type="color" value="#42b3ff">
+                <label class="text-xs text-slate-400">Text Color</label>
+                <input id="textColor" type="color" value="#efeaf8">
+                <button id="applyThemeBtn" class="col-span-2 mt-2 bg-white/5 py-2 rounded-md">Apply Theme</button>
+              </div>
+            </div>
+
+            <div class="mt-6 text-xs text-slate-400">Note: Premium features can be enabled/disabled from Admin controls.</div>
+          </div>
+
+          <!-- Telegram settings -->
+          <div class="p-4 rounded-xl bg-[rgba(255,255,255,0.02)] border border-white/5">
+            <div class="font-semibold">Telegram Integration</div>
+            <div class="text-sm text-slate-400 mt-2">Link your contractor Telegram bot to receive leads directly.</div>
+            <input id="telegramToken" placeholder="Bot token (bot:123...)" class="mt-3 p-2 bg-transparent border rounded-md w-full">
+            <input id="telegramChatId" placeholder="Chat ID (numeric)" class="mt-2 p-2 bg-transparent border rounded-md w-full">
+            <div class="flex gap-2 mt-3">
+              <button id="saveTelegramBtn" class="flex-1 bg-gradient-to-r from-[#7b61ff] to-[#42b3ff] py-2 rounded-md">Save & Test</button>
+              <button id="openBotBtn" class="flex-1 border border-white/6 py-2 rounded-md">Open Bot</button>
+            </div>
+            <div id="tgStatus" class="mt-2 text-xs text-slate-400">Status: <span id="tgStatusTxt">Unknown</span></div>
+          </div>
+
+          <!-- Small tools: ad creator -->
+          <div class="p-4 rounded-xl bg-[rgba(255,255,255,0.02)] border border-white/5">
+            <div class="flex justify-between items-center">
+              <div class="font-semibold">Ad / Post Creator</div>
+              <div class="text-xs text-slate-400">Quick social posts</div>
+            </div>
+
+            <input id="adTitle" placeholder="Ad title" class="mt-3 p-2 bg-transparent border rounded-md w-full" />
+            <textarea id="adDesc" placeholder="Short description" class="mt-2 p-2 bg-transparent border rounded-md w-full"></textarea>
+
+            <div class="flex gap-2 mt-3">
+              <button id="genAdBtn" class="flex-1 bg-gradient-to-r from-[#7b61ff] to-[#42b3ff] py-2 rounded-md">Generate Link</button>
+              <button id="shareAdBtn" class="flex-1 border border-white/6 py-2 rounded-md">Share</button>
+            </div>
+
+            <div id="adResult" class="mt-3 text-sm text-emerald-300 hidden"></div>
+          </div>
+
+          <!-- quick links -->
+          <div class="p-4 rounded-xl bg-[rgba(255,255,255,0.02)] border border-white/5 space-y-2">
+            <div class="font-semibold">Quick Links</div>
+            <a id="viewProfileLink" class="block text-sm text-slate-300 hover:underline">View public profile</a>
+            <a id="analyticsLink" class="block text-sm text-slate-300 hover:underline">Full analytics</a>
+            <a id="billingLink" class="block text-sm text-slate-300 hover:underline">Billing & subscription</a>
+          </div>
+        </aside>
+
+      </div>
+    </main>
+
+  </div>
+
+  <!-- Small inline modal for ad link preview -->
+  <div id="adModal" class="fixed inset-0 flex items-center justify-center bg-black/60 hidden z-50">
+    <div class="bg-[#081126] p-6 rounded-xl w-[640px] border border-white/6">
+      <div class="flex justify-between items-start">
+        <div>
+          <div class="font-bold text-lg" id="adPreviewTitle"></div>
+          <div class="text-sm text-slate-400 mt-1" id="adPreviewDesc"></div>
+          <div class="text-xs text-slate-400 mt-2" id="adPreviewLink"></div>
+        </div>
+        <button id="closeAdModal" class="text-slate-400">✕</button>
       </div>
     </div>
+  </div>
 
-    <div style="margin-top:12px">
-      <div style="margin-bottom:8px"><button id="editProfileBtn" class="btn" style="width:100%">Edit Profile</button></div>
-      <div style="margin-bottom:8px"><button id="messagesBtn" class="btn" style="width:100%">Messages</button></div>
-      <div style="margin-bottom:8px"><button id="reviewsBtn" class="btn" style="width:100%">Reviews</button></div>
-      <div style="margin-bottom:8px"><button id="analyticsBtn" class="btn" style="width:100%">Analytics</button></div>
-      <div style="margin-bottom:8px"><button id="billingBtn" class="btn" style="width:100%">Billing</button></div>
-      <div style="margin-bottom:8px"><button id="settingsBtn" class="btn" style="width:100%">Settings</button></div>
-    </div>
-
-    <div style="margin-top:18px">
-      <button id="logoutBtn" class="btn" style="width:100%">Logout</button>
-    </div>
-  </aside>
-
-  <main style="flex:1;padding:18px">
-    <div id="panelArea" class="card">
-      <h2>Welcome to your dashboard</h2>
-      <div class="small">Use the left menu to manage profile, messages, reviews, and billing.</div>
-    </div>
-  </main>
-</div>
-
-<script type="module">
-import { fetchContractors } from './Firebase-bridge.js';
-
-let contractors = await fetchContractors();
-let currentContractor = contractors[0] || null;
-
-function renderProfilePanel() {
-  const p = document.getElementById('panelArea');
-  p.innerHTML = `<h3>Profile</h3>
-    <div style="display:grid;grid-template-columns:1fr 320px;gap:12px">
-      <div>
-        <input id="company" class="small-input" placeholder="Company name" value="${currentContractor?.company||''}"/>
-        <input id="contactName" class="small-input" placeholder="Contact name" value="${currentContractor?.name||''}"/>
-        <input id="phone" class="small-input" placeholder="Phone" value="${currentContractor?.phone||''}"/>
-        <select id="serviceType" class="small-input">
-          <option ${currentContractor?.service==='Property'?'selected':''}>Property</option>
-          <option ${currentContractor?.service==='Cleaning'?'selected':''}>Cleaning</option>
-          <option ${currentContractor?.service==='Security'?'selected':''}>Security</option>
-          <option ${currentContractor?.service==='Garden'?'selected':''}>Garden</option>
-        </select>
-        <div style="margin-top:8px"><button id="saveProfile" class="btn">Save</button></div>
-      </div>
-      <div>
-        <div style="font-weight:800">Logo</div>
-        <img id="logoPreviewPanel" src="${currentContractor?.logoUrl||'/assets/default-logo.png'}" style="width:160px;height:160px;border-radius:12px;object-fit:cover;background:#111"/>
-        <input id="logoFile" type="file" accept="image/*" class="small-input" style="margin-top:8px"/>
-      </div>
-    </div>`;
-  document.getElementById('saveProfile').addEventListener('click', async ()=>{
-    const payload = {
-      id: currentContractor?.id,
-      company: document.getElementById('company').value,
-      name: document.getElementById('contactName').value,
-      phone: document.getElementById('phone').value,
-      service: document.getElementById('serviceType').value
-    };
-    const res = await fetch('/api/contractor', { method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify(payload) });
-    const j = await res.json();
-    if (j.ok) alert('Saved'); else alert('Failed');
-  });
-  document.getElementById('logoFile').addEventListener('change', async (e)=>{
-    const f = e.target.files[0];
-    if (!f) return;
-    const fd = new FormData(); fd.append('images', f);
-    const r = await fetch('/api/review', { method:'POST', body: fd });
-    const j = await r.json();
-    if (j.ok && j.images && j.images.length) {
-      const logo = j.images[0];
-      await fetch('/api/contractor', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ id: currentContractor?.id, logoUrl:logo }) });
-      document.getElementById('logoPreviewPanel').src = logo;
-      alert('Logo uploaded');
-    } else alert('Upload failed');
-  });
-}
-
-function renderMessagesPanel() {
-  const p = document.getElementById('panelArea');
-  p.innerHTML = `<h3>Messages</h3><div id="msgs" style="min-height:200px;background:#070417;padding:12px;border-radius:8px">Loading...</div>
-    <div style="display:flex;gap:8px;margin-top:8px"><input id="outMsg" class="small-input" placeholder="Message to admin"><button id="sendOut" class="btn">Send</button></div>`;
-  document.getElementById('sendOut').addEventListener('click', async ()=>{
-    const message = document.getElementById('outMsg').value.trim();
-    if(!message) return alert('Type a message');
-    const r = await fetch('/api/message', { method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify({ contractorId: currentContractor?.id || currentContractor?.phone, message }) });
-    const j = await r.json();
-    if (j.ok) { alert('Sent'); document.getElementById('outMsg').value=''; } else alert('Failed');
-  });
-}
-
-function renderReviewsPanel() {
-  const p = document.getElementById('panelArea');
-  p.innerHTML = `<h3>Reviews</h3><div id="reviewsList">Loading...</div>`;
-  (async()=>{
-    const r = await fetch('/api/logs/reviews'); const arr = await r.json();
-    const filtered = arr.filter(rv => rv.contractor === currentContractor?.company || rv.contractor === currentContractor?.id);
-    document.getElementById('reviewsList').innerHTML = filtered.map(f => `<div class="mini"><strong>${f.name}</strong> — ${f.rating} ⭐ <div class="small">${f.comment}</div></div>`).join('') || '<div class="small">No reviews yet</div>';
-  })();
-}
-
-function renderAnalyticsPanel() {
-  const p = document.getElementById('panelArea');
-  p.innerHTML = `<h3>Analytics</h3><div id="chart" style="min-height:200px">Graph placeholder — leads: <span id="leadCount">0</span></div>`;
-  (async()=>{
-    const r = await fetch('/api/logs/leads'); const leads = await r.json();
-    const count = leads.filter(l => l.contractorId === currentContractor?.id || l.contractorId === currentContractor?.phone).length;
-    document.getElementById('leadCount').textContent = count;
-  })();
-}
-
-function renderBillingPanel() {
-  const p = document.getElementById('panelArea');
-  p.innerHTML = `<h3>Billing</h3><div class="small">Subscription status: <strong>${currentContractor?.subscription?.plan || 'Free'}</strong></div><div style="margin-top:8px"><button id="upgrade" class="btn">Request Upgrade</button></div>`;
-  document.getElementById('upgrade').addEventListener('click', ()=> alert('Upgrade flow — contact admin.'));
-}
-
-document.getElementById('editProfileBtn').addEventListener('click', renderProfilePanel);
-document.getElementById('messagesBtn').addEventListener('click', renderMessagesPanel);
-document.getElementById('reviewsBtn').addEventListener('click', renderReviewsPanel);
-document.getElementById('analyticsBtn').addEventListener('click', renderAnalyticsPanel);
-document.getElementById('billingBtn').addEventListener('click', renderBillingPanel);
-document.getElementById('settingsBtn').addEventListener('click', ()=> {
-  const p = document.getElementById('panelArea');
-  p.innerHTML = `<h3>Settings</h3><div class="small">Telegram token and chat ID are saved in profile. To receive leads, set token & chat id in profile.</div>`;
-});
-document.getElementById('logoutBtn').addEventListener('click', ()=> { sessionStorage.removeItem('CONTRACTOR_ID'); window.location.href = '/'; });
-
-if (currentContractor) {
-  document.getElementById('companyDisplay').textContent = currentContractor.company || currentContractor.name || 'Contractor';
-  document.getElementById('contractorId').textContent = currentContractor.id || currentContractor.phone || '--';
-  renderProfilePanel();
-} else {
-  document.getElementById('panelArea').innerHTML = '<h3>No contractor found</h3><div class="small">Sign up or ask admin to add you.</div>';
-}
-</script>
 </body>
 </html>
