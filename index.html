@@ -1,233 +1,137 @@
 <!doctype html>
 <html lang="en">
 <head>
-<meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>OmniSolutions — All-in-One Service Network</title>
-<link rel="stylesheet" href="theme.css">
-<script type="module" src="Firebase-bridge.js" defer></script>
-<script type="module" src="confetti.js" defer></script>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>OmniSolutions — All-in-One Service Network</title>
+
+  <!-- theme -->
+  <link rel="stylesheet" href="theme.css">
+
+  <!-- services list (large file) -->
+  <script src="services.js" defer></script>
+
+  <!-- main front-end logic -->
+  <script type="module" src="main.js" defer></script>
 </head>
 <body>
-  <div class="shell">
-    <aside class="leftbar">
-      <div style="display:flex;gap:8px;margin-bottom:12px;">
-        <button id="btnContractor" class="btn">Contractor Dashboard</button>
-        <button id="btnReviews" class="btn">Reviews</button>
-        <button id="btnAdmin" class="btn" style="margin-left:auto;display:none;background:linear-gradient(90deg,#ff9a00,#ff4d6d)">Admin</button>
+  <div class="page-shell">
+
+    <!-- LEFT SIDEBAR (fixed) -->
+    <aside id="leftSidebar" class="left-sidebar">
+      <div class="brand">
+        <div class="logo-mini"></div>
+        <div class="brand-text">
+          <div class="title">OmniSolutions</div>
+          <div class="subtitle">All-in-One Service Network</div>
+        </div>
       </div>
 
-      <h3 style="color:var(--muted)">Categories</h3>
-      <div id="categoriesContainer" style="display:flex;flex-direction:column;gap:12px;max-height:68vh;overflow:auto"></div>
+      <div class="sidebar-actions">
+        <button id="btnContractor" class="pill btn-pill">Contractor Dashboard</button>
+        <button id="btnReviews" class="pill btn-pill">Reviews</button>
+        <button id="btnAdmin" class="pill btn-pill admin-pill" style="display:none">Admin</button>
+      </div>
 
-      <div style="margin-top:12px;border-top:1px solid #ffffff08;padding-top:12px">
-        <button id="btnTop" class="btn" style="width:100%">Top Contractors</button>
+      <div class="sidebar-cats">
+        <h4>Categories</h4>
+        <div id="categoriesRoot" class="cats-root"></div>
+      </div>
+
+      <div class="sidebar-bottom">
+        <button id="topContractorsBtn" class="btn">Top Contractors (Platinum)</button>
       </div>
     </aside>
 
-    <main class="content">
-      <header class="card header-row">
-        <div style="display:flex;gap:12px;align-items:center">
-          <div class="logo-mini"></div>
-          <div>
-            <h1 style="margin:0">OmniSolutions</h1>
-            <div class="small" style="color:var(--muted)">Find verified local contractors fast</div>
-          </div>
-        </div>
-        <div style="display:flex;gap:8px">
-          <button id="btnTopHeader" class="btn">Top Contractors</button>
+    <!-- MAIN CONTENT -->
+    <main class="main-content">
+      <header class="main-header">
+        <div>
+          <h1>Find a service — we'll match you with verified contractors</h1>
+          <p class="muted">Select a category then pick a service. Chat to request a quote. Fast, trusted & local.</p>
         </div>
       </header>
 
-      <section class="card">
-        <h2>Popular Services</h2>
-        <div id="popular" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-top:12px"></div>
+      <section class="card popular-card">
+        <h3>Popular Services</h3>
+        <div id="popularGrid" class="popular-grid"></div>
       </section>
 
-      <section class="card">
-        <h2>Testimonials</h2>
-        <div id="testimonials" style="display:flex;gap:12px;align-items:center;overflow:hidden;position:relative"></div>
+      <section class="card top-contractors">
+        <h3>Top Contractors</h3>
+        <div id="topContractorsRow" class="top-rows"></div>
       </section>
+
+      <section class="card testimonials">
+        <h3>Testimonials</h3>
+        <div id="testimonialsRow" class="test-row"></div>
+      </section>
+
     </main>
-  </div>
 
-  <!-- Local overlay modal -->
-  <div id="localOverlay" style="display:none;position:fixed;left:0;top:0;right:0;bottom:0;background:rgba(2,2,6,0.75);z-index:9999;align-items:center;justify-content:center">
-    <div style="background:linear-gradient(180deg,#0b0813,#0d0a17);padding:18px;border-radius:12px;width:920px;max-width:96%;color:var(--ink)">
-      <div style="display:flex;justify-content:space-between;align-items:center">
-        <h3 id="localTitle">Local Services</h3>
-        <div><button id="closeLocal" class="btn">Close</button></div>
-      </div>
-      <div style="display:flex;gap:12px;margin-top:12px">
-        <div style="width:320px">
-          <div id="localServiceName" class="mini"></div>
-          <h4 style="margin:8px 0">Top 3 Contractors</h4>
-          <div id="top3" style="display:flex;flex-direction:column;gap:10px"></div>
+    <!-- CHAT WIDGET (floating) -->
+    <button id="chatToggle" class="chat-toggle">Chat</button>
+
+    <div id="chatModal" class="chat-modal" aria-hidden="true">
+      <div class="chat-card">
+        <div class="chat-header">
+          <div><strong>OmniChat</strong><div class="small-muted">We’ll help find the right service</div></div>
+          <button id="chatClose" class="chat-close">✕</button>
         </div>
-        <div style="flex:1">
-          <h4 style="margin:8px 0">All Local Contractors</h4>
-          <div id="localList" style="display:flex;flex-direction:column;gap:12px;max-height:420px;overflow:auto"></div>
+
+        <div id="chatBody" class="chat-body">
+          <!-- step-based chat form -->
+          <div id="chatStepService" class="chat-step">
+            <label class="label">Selected Service</label>
+            <div id="chosenService" class="mini-panel">None</div>
+
+            <label class="label">Top Contractors</label>
+            <div id="chatTop3" class="contractor-list-small"></div>
+
+            <button id="btnProceed" class="btn">Request this service</button>
+          </div>
+
+          <form id="leadForm" class="chat-step" style="display:none">
+            <label class="label">Full name</label>
+            <input name="name" class="input" required>
+
+            <label class="label">Phone</label>
+            <input name="phone" class="input" required>
+
+            <label class="label">Email (optional)</label>
+            <input name="email" class="input">
+
+            <label class="label">Address / Suburb</label>
+            <input name="address" class="input">
+
+            <label class="label">When</label>
+            <input name="when" class="input" placeholder="ASAP or date">
+
+            <label class="label">Details</label>
+            <textarea name="details" class="input textarea" placeholder="Describe the problem"></textarea>
+
+            <div style="display:flex;gap:8px;margin-top:12px">
+              <button type="submit" class="btn">Send Request</button>
+              <button type="button" id="btnBack" class="btn ghost">Back</button>
+            </div>
+          </form>
+
+          <div id="chatResult" class="chat-step" style="display:none"></div>
         </div>
       </div>
     </div>
-  </div>
 
-  <!-- Chat widget -->
-  <button id="chatOpen" class="admin-btn">Chat</button>
-  <div id="chatWindow" style="display:none;position:fixed;right:18px;bottom:80px;width:380px;max-width:92vw;z-index:10000;border-radius:12px;overflow:hidden">
-    <div style="background:linear-gradient(90deg,var(--accent-from),var(--accent-to));padding:10px;color:white;font-weight:700">Omni Chat</div>
-    <div id="chatMsgs" style="background:linear-gradient(180deg,#070416,#0b0813);height:320px;overflow:auto;padding:12px;display:flex;flex-direction:column-reverse"></div>
-    <div style="display:flex;gap:8px;padding:10px;background:#070417;">
-      <input id="chatInput" class="small-input" placeholder="Type your message..." style="flex:1">
-      <button id="chatSend" class="btn">Send</button>
+    <!-- modal for showing service details (optional) -->
+    <div id="serviceModal" class="service-modal" aria-hidden="true">
+      <div class="service-card">
+        <div class="service-header">
+          <h3 id="serviceTitle"></h3>
+          <button id="closeServiceModal" class="close-btn">✕</button>
+        </div>
+        <div id="serviceContent"></div>
+      </div>
     </div>
+
   </div>
-
-  <canvas id="confettiCanvas" style="position:fixed;left:0;top:0;right:0;pointer-events:none;z-index:2200"></canvas>
-
-<script type="module">
-import confettiSpark from './confetti.js';
-import { createLead, fetchServices, fetchContractors } from './Firebase-bridge.js';
-confettiSpark.init(document.getElementById('confettiCanvas'));
-
-let SERVICES = [], CONTRACTORS = [];
-(async ()=>{
-  SERVICES = await fetchServices();
-  CONTRACTORS = await fetchContractors();
-
-  // categories
-  const cats = [...new Set(SERVICES.map(s => s.cat))];
-  const container = document.getElementById('categoriesContainer');
-  cats.forEach(cat=>{
-    const row = document.createElement('div');
-    row.innerHTML = `<div class="cat-toggle">${cat} <span style="opacity:.6">▸</span></div><div class="services-list"></div>`;
-    const sl = row.querySelector('.services-list');
-    SERVICES.filter(s=>s.cat===cat).forEach(s=>{
-      const b = document.createElement('button'); b.className='svc-bubble'; b.textContent = s.name;
-      b.addEventListener('click', ()=> openLocal(s));
-      sl.appendChild(b);
-    });
-    row.querySelector('.cat-toggle').addEventListener('click', ()=> {
-      sl.classList.toggle('open');
-      row.querySelector('.cat-toggle span').textContent = sl.classList.contains('open') ? '▾' : '▸';
-    });
-    container.appendChild(row);
-  });
-
-  // popular
-  const pop = document.getElementById('popular');
-  SERVICES.slice(0,24).forEach(s=>{
-    const el = document.createElement('div'); el.className='service-card';
-    el.innerHTML = `<div style="font-weight:800">${s.name}</div><div class="small" style="color:var(--muted)">${s.cat}</div><div style="margin-top:8px"><button class="btn chooseBtn">Choose</button></div>`;
-    el.querySelector('.chooseBtn').addEventListener('click', ()=> openLocal(s));
-    pop.appendChild(el);
-  });
-
-  // testimonials (sample)
-  const tWrap = document.getElementById('testimonials');
-  const example = [
-    {name:"Janine P.", text:"Quick and reliable. Fixed my roof same day!", rating:5},
-    {name:"Sipho M.", text:"Amazing cleaners. Left the place spotless.", rating:5},
-    {name:"Daniela R.", text:"Professional and on time. Highly recommend.", rating:4.8}
-  ];
-  example.forEach(x=>{
-    const c = document.createElement('div'); c.style.minWidth='260px'; c.style.borderRadius='12px'; c.style.padding='12px'; c.style.background='#0b0714';
-    c.innerHTML = `<div style="font-weight:800">${x.name}</div><div class="small" style="color:var(--muted);margin:8px 0">${x.text}</div><div style="font-weight:700">⭐ ${x.rating}</div>`;
-    tWrap.appendChild(c);
-  });
-  let pos = 0;
-  setInterval(()=>{ pos=(pos+1)%tWrap.children.length; tWrap.style.transform = `translateX(-${pos*280}px)`; tWrap.style.transition='transform 600ms ease'; }, 4000);
-
-})();
-
-function openLocal(service) {
-  document.getElementById('localOverlay').style.display = 'flex';
-  document.getElementById('localServiceName').textContent = `${service.name} — ${service.cat}`;
-  const matched = CONTRACTORS.filter(c => (c.service && c.service.toLowerCase().includes(service.cat.split(' ')[0].toLowerCase())) || (Array.isArray(c.tags) && c.tags.some(t=>t.toLowerCase().includes(service.name.toLowerCase()))));
-  const listToShow = matched.length ? matched : CONTRACTORS;
-  const top3 = [...listToShow].sort((a,b)=>(b.rating||0)-(a.rating||0)).slice(0,3);
-  const top3Wrap = document.getElementById('top3'); top3Wrap.innerHTML='';
-  top3.forEach(c => top3Wrap.appendChild(renderContractorCard(c, true)));
-  const localList = document.getElementById('localList'); localList.innerHTML='';
-  listToShow.forEach(c => localList.appendChild(renderContractorCard(c,false)));
-}
-
-function renderContractorCard(c, isTop=false) {
-  const el = document.createElement('div'); el.className='contractor-card';
-  const logo = document.createElement('img'); logo.className='contractor-logo'; logo.src = c.logoUrl || '/assets/default-logo.png';
-  const info = document.createElement('div'); info.className='contractor-info';
-  info.innerHTML = `<div style="font-weight:800">${c.company||c.name||'Unnamed'}</div><div class="small" style="color:var(--muted)">${c.service||c.tags?.join(', ')||'General'}</div><div style="margin-top:8px" class="small">📞 ${c.phone||'-'} &nbsp; • &nbsp; ⭐ ${(c.rating||0).toFixed(1)}</div>`;
-  const btn = document.createElement('button'); btn.className='btn'; btn.textContent='Contact';
-  btn.addEventListener('click', ()=> { openChatForContractor(c); document.getElementById('localOverlay').style.display='none'; });
-  el.appendChild(logo); el.appendChild(info); el.appendChild(btn);
-  if (isTop) {
-    const badge = document.createElement('img'); badge.className='badge-img'; badge.src = c.badge ? `/badges/${c.badge}.png` : '/badges/platinum.png';
-    el.appendChild(badge);
-  }
-  return el;
-}
-
-document.getElementById('closeLocal').addEventListener('click', ()=> document.getElementById('localOverlay').style.display='none');
-
-function openChatForContractor(c) {
-  window.__PREFERRED_CONTRACTOR = c.id;
-  document.getElementById('chatOpen').click();
-}
-
-/* Chat flow */
-const chatOpen = document.getElementById('chatOpen');
-const chatWindow = document.getElementById('chatWindow');
-const chatMsgs = document.getElementById('chatMsgs');
-const chatInput = document.getElementById('chatInput');
-const chatSend = document.getElementById('chatSend');
-
-let convo = { step:0, data:{} };
-
-chatOpen.addEventListener('click', ()=> {
-  chatWindow.style.display = chatWindow.style.display==='none' ? 'block' : 'none';
-  if (chatWindow.style.display === 'block') startConvo();
-});
-
-chatSend.addEventListener('click', handleChat);
-chatInput.addEventListener('keydown', e => { if (e.key === 'Enter') handleChat(); });
-
-function pushBot(text){ const d=document.createElement('div'); d.style.padding='10px'; d.style.borderRadius='8px'; d.style.background='#0f0b1a'; d.style.marginBottom='8px'; d.style.color='var(--muted)'; d.textContent=text; chatMsgs.prepend(d); }
-function pushUser(text){ const d=document.createElement('div'); d.style.padding='8px'; d.style.borderRadius='8px'; d.style.background='linear-gradient(90deg,var(--accent-from),var(--accent-to))'; d.style.color='white'; d.style.marginBottom='8px'; d.style.alignSelf='flex-end'; d.textContent=text; chatMsgs.prepend(d); }
-
-function startConvo() { convo={step:1,data:{}}; chatMsgs.innerHTML=''; pushBot("Hi — I'm OmniChat. What's your full name?"); chatInput.focus(); }
-
-async function handleChat(){
-  const text = chatInput.value.trim(); if (!text) return; pushUser(text); chatInput.value='';
-  if (convo.step===1){ convo.data.name=text; convo.step=2; pushBot("Phone number?"); }
-  else if (convo.step===2){ convo.data.phone=text; convo.step=3; pushBot("Your address or suburb?"); }
-  else if (convo.step===3){ convo.data.address=text; convo.step=4; pushBot("When would you like the service? (ASAP / Date)"); }
-  else if (convo.step===4){ convo.data.when=text; convo.step=5; pushBot("Short details about the job"); }
-  else if (convo.step===5){
-    convo.data.details=text;
-    pushBot("Sending your request now...");
-    confettiSpark.shoot(90);
-    const payload = {
-      name: convo.data.name,
-      phone: convo.data.phone,
-      email: "",
-      service: convo.data.service || "General",
-      message: `When: ${convo.data.when || '-'}\nAddress: ${convo.data.address || '-'}\nDetails: ${convo.data.details || '-'}`,
-      contractorId: window.__PREFERRED_CONTRACTOR
-    };
-    try {
-      await createLead(payload);
-      const r = await fetch('/api/lead', { method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify(payload) });
-      const j = await r.json();
-      if (j && j.ok) pushBot("✅ Request sent. Contractors will contact you shortly.");
-      else pushBot("❌ Failed to send. Try again later.");
-    } catch (err) { console.error(err); pushBot("❌ Network error sending request."); }
-    convo={step:0,data:{}};
-  }
-}
-
-/* admin button visibility (if ADMIN_SECRET set) */
-(async ()=>{
-  try { const r = await fetch('/api/admin-secret'); const j = await r.json(); if (j && j.secret) document.getElementById('btnAdmin').style.display='inline-block'; } catch(e){}
-})();
-</script>
 </body>
 </html>
