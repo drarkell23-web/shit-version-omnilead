@@ -1,70 +1,199 @@
 <!doctype html>
-<html>
+<html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Contractor — OmniSolutions</title>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Contractor — Omni-Solutions</title>
   <link rel="stylesheet" href="/main.css">
+  <style>
+    /* extra styles for contractor public page override */
+    .contractor-hero { display:flex; gap:20px; align-items:center; padding:20px; background:linear-gradient(90deg, rgba(111,76,255,0.12), rgba(46,193,255,0.06)); border-radius:12px; margin-bottom:16px; }
+    .hero-left { display:flex; gap:16px; align-items:center }
+    .hero-logo { width:110px;height:110px;border-radius:12px;background:linear-gradient(90deg,var(--accent),var(--accent2)); display:flex;align-items:center;justify-content:center;font-weight:800;color:#07101b;font-size:28px; }
+    .hero-meta h1 { margin:0; font-size:22px }
+    .hero-meta .muted { margin-top:6px; color:var(--muted) }
+    .badge-img { height:34px; margin-left:8px; vertical-align:middle }
+    .two-col { display:grid; grid-template-columns: 1fr 380px; gap:18px; }
+    .services-list { display:flex;flex-wrap:wrap;gap:8px }
+    .service-pill { padding:8px 10px;border-radius:999px;background:rgba(255,255,255,0.02);font-weight:700 }
+    .reviews-grid { display:grid; grid-template-columns: repeat(auto-fill,minmax(220px,1fr)); gap:12px; margin-top:12px }
+    .review-card { background:rgba(255,255,255,0.02); padding:10px; border-radius:8px }
+    .gallery { display:flex; gap:8px; margin-top:10px; flex-wrap:wrap }
+    .gallery img { width:120px; height:80px; object-fit:cover; border-radius:8px }
+    .contact-card { padding:12px; border-radius:10px; background:linear-gradient(180deg, rgba(255,255,255,0.015), rgba(255,255,255,0.01)); }
+    @media (max-width:900px){ .two-col{ grid-template-columns: 1fr; } .hero-logo{ width:84px;height:84px } }
+  </style>
   <script type="module">
-    import { supabase } from '/public/supabase-client.js';
-
-    // read id from path: /c/<id>. We'll parse last path segment.
-    const id = window.location.pathname.split('/').pop();
+    // c.html client: fetch contractor by id (/api/contractor/:id) and render
+    const id = window.location.pathname.split('/').pop() || '';
+    if (!id) document.body.innerHTML = '<div style="padding:20px">No contractor id provided</div>';
 
     async function loadContractor(){
-      // try by id (assumed to be contractors.id)
-      const { data, error } = await supabase.from('contractors').select('*').eq('id', id).maybeSingle();
-      if (!data) {
-        // fallback: try phone
-        const byPhone = await supabase.from('contractors').select('*').eq('phone', id).maybeSingle();
-        if (byPhone.data) showContractor(byPhone.data);
-        else document.body.innerHTML = '<div style="padding:20px">Contractor not found</div>';
-        return;
+      try {
+        const res = await fetch(`/api/contractor/${id}`);
+        if (!res.ok) throw new Error('not found');
+        const json = await res.json();
+        const c = json.contractor;
+        const reviews = json.reviews || [];
+
+        document.getElementById('heroName').textContent = c.name || c.company_name || 'Contractor';
+        document.getElementById('heroService').textContent = c.service || '';
+        document.getElementById('heroPhone').textContent = c.phone || '-';
+        document.getElementById('heroEmail').textContent = c.email || '-';
+        if (c.logo_url) {
+          document.getElementById('heroLogo').style.backgroundImage = `url(${c.logo_url})`;
+          document.getElementById('heroLogo').textContent = '';
+        } else {
+          document.getElementById('heroLogo').textContent = (c.name||'CT').slice(0,2).toUpperCase();
+        }
+
+        // badge
+        if (c.badge) {
+          const img = document.createElement('img'); img.className='badge-img'; img.src = `/badges/${c.badge}.png`; img.alt = c.badge;
+          document.getElementById('heroBadge').appendChild(img);
+        }
+
+        // services — try to show top 8 from services table by searching name match
+        const allServices = await fetch('/api/services').then(r=>r.json()).then(j => j.services || []);
+        const offered = allServices.filter(s => (c.service || '').toLowerCase().includes((s.cat||'').toLowerCase()) || (s.name||'').toLowerCase().includes((c.service||'').toLowerCase()));
+        const servicesSection = document.getElementById('servicesList');
+        const topServices = offered.length ? offered.slice(0,12) : allServices.slice(0,12);
+        servicesSection.innerHTML = topServices.map(s => `<div class="service-pill">${s.name}</div>`).join('');
+
+        // reviews
+        const revArea = document.getElementById('reviewsArea');
+        if (!reviews || reviews.length === 0) revArea.innerHTML = '<div class="muted">No reviews yet</div>';
+        else revArea.innerHTML = reviews.map(r => {
+          const imgs = (r.images || []).map(u => `<img src="${u}">`).join('');
+          return `<div class="review-card"><strong>${r.reviewer_name||'Client'}</strong> — ⭐ ${r.rating||5}<div class="muted small">${r.comment||''}</div>${imgs?`<div class="gallery">${imgs}</div>`:''}</div>`;
+        }).join('');
+
+        // gallery: show up to 6 images from reviews
+        const gallery = document.getElementById('gallery');
+        const images = reviews.flatMap(r => r.images || []);
+        gallery.innerHTML = (images.slice(0,6).map(u => `<img src="${u}">`).join('')) || '<div class="muted">No gallery images</div>';
+
+        // contact form action: prefill service and contractor id
+        document.getElementById('formService').value = c.service || '';
+        document.getElementById('formContractorId').value = c.id;
+      } catch (e) {
+        console.error(e);
+        document.getElementById('root').innerHTML = '<div style="padding:20px">Contractor not found or error loading profile.</div>';
       }
-      showContractor(data);
     }
 
-    function showContractor(c){
-      const root = document.getElementById('root');
-      root.innerHTML = `
-        <div class="contractor-header" style="display:flex;gap:16px;align-items:center">
-          <div style="width:100px;height:100px;border-radius:12px;background-image:url('${c.logo_url||''}');background-size:cover;background-position:center">${!c.logo_url? (c.name?.slice(0,2).toUpperCase() || 'CO') : ''}</div>
-          <div>
-            <h1>${c.name || c.company_name || 'Contractor'}</h1>
-            <div class="muted">${c.service || ''}</div>
-            <div style="margin-top:8px"><strong>Contact:</strong> ${c.phone||'-'} • ${c.email||'-'}</div>
-            ${c.badge ? `<div style="margin-top:6px"><img src="/badges/${c.badge}.png" style="height:28px" alt="${c.badge} badge"></div>` : ''}
-          </div>
-        </div>
-        <hr>
-        <div id="reviewsArea"></div>
-        <div style="margin-top:12px"><button id="contactBtn" class="btn-primary">Contact via site</button></div>
-      `;
-      // load reviews
-      loadReviewsForContractor(c.id);
-      // contact button opens lead modal
-      document.getElementById('contactBtn').addEventListener('click', ()=>{
-        const url = `/index.html`; // simply send them to homepage modal flow
-        window.location.href = url;
-      });
+    async function sendContactForm(e){
+      e.preventDefault();
+      const name = document.getElementById('formName').value.trim();
+      const phone = document.getElementById('formPhone').value.trim();
+      const email = document.getElementById('formEmail').value.trim();
+      const service = document.getElementById('formService').value.trim();
+      const message = document.getElementById('formMessage').value.trim();
+      const contractorId = document.getElementById('formContractorId').value || '';
+
+      if (!name || !phone) return alert('Name and phone required');
+
+      const payload = { name, phone, email, service, message, contractor_id: contractorId };
+      const res = await fetch('/api/lead', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) });
+      if (res.ok) {
+        // celebration - lightweight: simple confetti + graffiti using same logic as main page but minimal inline
+        // small confetti inline:
+        (function miniConfetti(){
+          const cvs = document.createElement('canvas'); cvs.style.position='fixed'; cvs.style.left=0; cvs.style.top=0; cvs.style.width='100%'; cvs.style.height='100%'; cvs.style.pointerEvents='none';
+          cvs.width = window.innerWidth; cvs.height = window.innerHeight; document.body.appendChild(cvs);
+          const ctx = cvs.getContext('2d');
+          const parts = [];
+          const cols = ['#6f4cff','#2ec1ff','#ffd166','#ff6b6b','#7efc6b'];
+          for (let i=0;i<80;i++) parts.push({x: Math.random()*cvs.width, y: Math.random()*80, vx:(Math.random()-0.5)*6, vy: Math.random()*6+2, r: Math.random()*6+3, c: cols[Math.floor(Math.random()*cols.length)], life: 90});
+          function run(){ ctx.clearRect(0,0,cvs.width,cvs.height); parts.forEach(p=>{ p.x+=p.vx; p.y+=p.vy; p.vy+=0.08; ctx.fillStyle=p.c; ctx.fillRect(p.x,p.y,p.r,p.r*0.6); p.life--; }); if (parts.every(p=>p.life<=0)){ cvs.remove(); } else requestAnimationFrame(run); }
+          run();
+        })();
+        // lightweight paint splash at bottom:
+        (function paintSplash(){
+          const c = document.createElement('div'); c.style.position='fixed'; c.style.left=0; c.style.bottom=0; c.style.width='100%'; c.style.height='140px'; c.style.pointerEvents='none'; document.body.appendChild(c);
+          const colors = ['#6f4cff','#2ec1ff','#ffd166','#ff6b6b'];
+          for (let i=0;i<12;i++){
+            const s = document.createElement('div'); const w = 40 + Math.random()*80;
+            s.style.width = w + 'px'; s.style.height = (10 + Math.random()*40)+'px'; s.style.background = colors[Math.floor(Math.random()*colors.length)];
+            s.style.display='inline-block'; s.style.margin='6px'; s.style.borderRadius='60%';
+            s.style.opacity='0.95'; c.appendChild(s);
+            setTimeout(()=> s.style.transform='translateY(-40px)', 30);
+            setTimeout(()=> s.style.opacity='0', 1400);
+            setTimeout(()=> s.remove(), 1700);
+          }
+          setTimeout(()=> c.remove(), 1800);
+        })();
+
+        alert('Request sent — contractor & admin will be notified. Thank you!');
+        document.getElementById('contactForm').reset();
+      } else {
+        alert('Failed to send request. Try again.');
+      }
     }
 
-    async function loadReviewsForContractor(contractorId){
-      const { data } = await supabase.from('reviews').select('*').eq('contractor_id', contractorId).order('created_at', { ascending: false }).limit(100);
-      const area = document.getElementById('reviewsArea');
-      if (!data || data.length === 0) { area.innerHTML = '<div class="muted">No reviews yet</div>'; return; }
-      area.innerHTML = data.map(r => `
-        <div class="review">
-          <strong>${r.reviewer_name}</strong> — ⭐ ${r.rating}<div class="muted small">${r.comment}</div>
-          ${Array.isArray(r.images) && r.images.length ? `<div style="display:flex;gap:6px;margin-top:6px">${r.images.map(u=>`<img src="${u}" style="width:120px;height:80px;object-fit:cover;border-radius:8px">`).join('')}</div>` : ''}
-        </div>
-      `).join('');
-    }
-
-    document.addEventListener('DOMContentLoaded', loadContractor);
+    document.addEventListener('DOMContentLoaded', ()=> {
+      loadContractor();
+      document.getElementById('contactForm').addEventListener('submit', sendContactForm);
+    });
   </script>
 </head>
 <body>
-  <div id="root" style="padding:18px"></div>
+  <div id="root" style="max-width:1100px;margin:18px auto;padding:12px">
+    <div class="contractor-hero">
+      <div class="hero-left">
+        <div id="heroLogo" class="hero-logo">CT</div>
+        <div class="hero-meta">
+          <h1 id="heroName">Contractor</h1>
+          <div id="heroBadge" style="display:inline-block"></div>
+          <div class="muted" id="heroService">Service</div>
+          <div style="margin-top:8px">☎ <span id="heroPhone">-</span> • ✉ <span id="heroEmail">-</span></div>
+        </div>
+      </div>
+      <div style="margin-left:auto">
+        <button onclick="window.location.href='/'" class="btn-primary">Back to Omni</button>
+      </div>
+    </div>
+
+    <div class="two-col">
+      <div>
+        <h3>About</h3>
+        <div id="aboutText" class="muted small">Professional contractor listing. Quality & vetted.</div>
+
+        <h3 style="margin-top:12px">Services</h3>
+        <div id="servicesList" class="services-list"></div>
+
+        <h3 style="margin-top:12px">Gallery</h3>
+        <div id="gallery" class="gallery muted">Loading...</div>
+
+        <h3 style="margin-top:12px">Reviews</h3>
+        <div id="reviewsArea" class="reviews-grid"></div>
+      </div>
+
+      <aside>
+        <div class="contact-card">
+          <h3>Contact this contractor</h3>
+          <form id="contactForm">
+            <input id="formContractorId" type="hidden" />
+            <label class="muted small">Service</label>
+            <input id="formService" />
+            <label class="muted small">Your name</label>
+            <input id="formName" required />
+            <label class="muted small">Phone</label>
+            <input id="formPhone" required />
+            <label class="muted small">Email (optional)</label>
+            <input id="formEmail" />
+            <label class="muted small">Message</label>
+            <textarea id="formMessage" rows="4"></textarea>
+            <div style="margin-top:8px"><button class="btn-primary" type="submit">Send Request</button></div>
+          </form>
+        </div>
+        <div style="height:18px"></div>
+        <div class="contact-card" style="text-align:center">
+          <div class="muted small">Want the contractor to reply to Telegram?</div>
+          <div style="margin-top:8px"><button class="btn-ghost" onclick="alert('If contractor configured Telegram, they will receive leads there.')">How it works</button></div>
+        </div>
+      </aside>
+    </div>
+  </div>
 </body>
 </html>
