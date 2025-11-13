@@ -1,0 +1,70 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Contractor — OmniSolutions</title>
+  <link rel="stylesheet" href="/main.css">
+  <script type="module">
+    import { supabase } from '/public/supabase-client.js';
+
+    // read id from path: /c/<id>. We'll parse last path segment.
+    const id = window.location.pathname.split('/').pop();
+
+    async function loadContractor(){
+      // try by id (assumed to be contractors.id)
+      const { data, error } = await supabase.from('contractors').select('*').eq('id', id).maybeSingle();
+      if (!data) {
+        // fallback: try phone
+        const byPhone = await supabase.from('contractors').select('*').eq('phone', id).maybeSingle();
+        if (byPhone.data) showContractor(byPhone.data);
+        else document.body.innerHTML = '<div style="padding:20px">Contractor not found</div>';
+        return;
+      }
+      showContractor(data);
+    }
+
+    function showContractor(c){
+      const root = document.getElementById('root');
+      root.innerHTML = `
+        <div class="contractor-header" style="display:flex;gap:16px;align-items:center">
+          <div style="width:100px;height:100px;border-radius:12px;background-image:url('${c.logo_url||''}');background-size:cover;background-position:center">${!c.logo_url? (c.name?.slice(0,2).toUpperCase() || 'CO') : ''}</div>
+          <div>
+            <h1>${c.name || c.company_name || 'Contractor'}</h1>
+            <div class="muted">${c.service || ''}</div>
+            <div style="margin-top:8px"><strong>Contact:</strong> ${c.phone||'-'} • ${c.email||'-'}</div>
+            ${c.badge ? `<div style="margin-top:6px"><img src="/badges/${c.badge}.png" style="height:28px" alt="${c.badge} badge"></div>` : ''}
+          </div>
+        </div>
+        <hr>
+        <div id="reviewsArea"></div>
+        <div style="margin-top:12px"><button id="contactBtn" class="btn-primary">Contact via site</button></div>
+      `;
+      // load reviews
+      loadReviewsForContractor(c.id);
+      // contact button opens lead modal
+      document.getElementById('contactBtn').addEventListener('click', ()=>{
+        const url = `/index.html`; // simply send them to homepage modal flow
+        window.location.href = url;
+      });
+    }
+
+    async function loadReviewsForContractor(contractorId){
+      const { data } = await supabase.from('reviews').select('*').eq('contractor_id', contractorId).order('created_at', { ascending: false }).limit(100);
+      const area = document.getElementById('reviewsArea');
+      if (!data || data.length === 0) { area.innerHTML = '<div class="muted">No reviews yet</div>'; return; }
+      area.innerHTML = data.map(r => `
+        <div class="review">
+          <strong>${r.reviewer_name}</strong> — ⭐ ${r.rating}<div class="muted small">${r.comment}</div>
+          ${Array.isArray(r.images) && r.images.length ? `<div style="display:flex;gap:6px;margin-top:6px">${r.images.map(u=>`<img src="${u}" style="width:120px;height:80px;object-fit:cover;border-radius:8px">`).join('')}</div>` : ''}
+        </div>
+      `).join('');
+    }
+
+    document.addEventListener('DOMContentLoaded', loadContractor);
+  </script>
+</head>
+<body>
+  <div id="root" style="padding:18px"></div>
+</body>
+</html>
