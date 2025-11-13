@@ -1,13 +1,18 @@
 /**
- * server.js — OmniLink Solutions
- * - Persistent JSON store for demo-to-production ease (data in /data/*.json)
- * - Endpoints for leads, contractors, reviews, services, applying badges, messages
- * - Sends Telegram messages to admin bot and contractor bot if configured
+ * server.js - Restored & upgraded main server
+ * - JSON persistence in /data for contractors, services, leads, reviews, messages
+ * - File uploads saved to /uploads
+ * - Endpoints:
+ *   GET /api/services
+ *   GET /api/contractors
+ *   POST /api/contractor
+ *   POST /api/lead
+ *   POST /api/review (multipart)
+ *   POST /api/message
+ *   POST /api/apply-badge (adminSecret required)
+ *   GET /api/logs/:name
  *
- * IMPORTANT: Set these environment variables in your host (Render):
- * BOT_TOKEN, ADMIN_CHAT_ID, ADMIN_SECRET
- *
- * NOTE: For production durability across deploys use Firestore or an external DB.
+ * Set env variables: BOT_TOKEN, ADMIN_CHAT_ID, ADMIN_SECRET
  */
 
 import express from "express";
@@ -23,29 +28,28 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const PORT = process.env.PORT || 10000;
 
-const BOT_TOKEN = process.env.BOT_TOKEN || "8526401033:AAFrG8IH8xqQL_RTD7s7JLyxZpc8e8GOyyg";
-const ADMIN_CHAT_ID = process.env.ADMIN_CHAT_ID || "8187670531";
-const ADMIN_SECRET = process.env.ADMIN_SECRET || "omni$admin_2025_KEY!@34265346597843152";
+const BOT_TOKEN = process.env.BOT_TOKEN || "";
+const ADMIN_CHAT_ID = process.env.ADMIN_CHAT_ID || "";
+const ADMIN_SECRET = process.env.ADMIN_SECRET || "";
 
 const DATA_DIR = path.join(__dirname, "data");
 const UPLOADS_DIR = path.join(__dirname, "uploads");
 const ASSETS_DIR = path.join(__dirname, "assets");
 const BADGES_DIR = path.join(__dirname, "badges");
 
-if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR);
-if (!fs.existsSync(UPLOADS_DIR)) fs.mkdirSync(UPLOADS_DIR);
-if (!fs.existsSync(ASSETS_DIR)) fs.mkdirSync(ASSETS_DIR);
-if (!fs.existsSync(BADGES_DIR)) fs.mkdirSync(BADGES_DIR);
+// ensure directories
+for (const d of [DATA_DIR, UPLOADS_DIR, ASSETS_DIR, BADGES_DIR]) {
+  if (!fs.existsSync(d)) fs.mkdirSync(d, { recursive: true });
+}
 
-// small helpers
 function readJSON(name) {
-  const file = path.join(DATA_DIR, name + ".json");
-  if (!fs.existsSync(file)) return [];
-  try { return JSON.parse(fs.readFileSync(file, "utf8")); } catch(e){ console.error("readJSON err", e); return []; }
+  const f = path.join(DATA_DIR, name + ".json");
+  if (!fs.existsSync(f)) return [];
+  try { return JSON.parse(fs.readFileSync(f, "utf8")); } catch(e){ console.error("readJSON", e); return []; }
 }
 function writeJSON(name, data) {
-  const file = path.join(DATA_DIR, name + ".json");
-  fs.writeFileSync(file, JSON.stringify(data, null, 2));
+  const f = path.join(DATA_DIR, name + ".json");
+  fs.writeFileSync(f, JSON.stringify(data, null, 2));
 }
 function appendLog(name, obj) {
   const arr = readJSON(name);
@@ -53,12 +57,13 @@ function appendLog(name, obj) {
   writeJSON(name, arr.slice(0, 5000));
 }
 
+// multer upload
 const upload = multer({
   storage: multer.diskStorage({
     destination: (req,file,cb) => cb(null, UPLOADS_DIR),
     filename: (req,file,cb) => cb(null, `${Date.now()}-${Math.random().toString(36).slice(2,8)}-${file.originalname.replace(/\s+/g,'_')}`)
   }),
-  limits: { fileSize: 10 * 1024 * 1024 }
+  limits: { fileSize: 12 * 1024 * 1024 }
 });
 
 const app = express();
@@ -74,7 +79,7 @@ async function sendTelegram(token, chatId, text) {
   try {
     const res = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {"Content-Type":"application/json"},
       body: JSON.stringify({ chat_id: String(chatId), text, parse_mode: "HTML" })
     });
     return await res.json();
@@ -84,44 +89,36 @@ async function sendTelegram(token, chatId, text) {
   }
 }
 
-// Ensure services list exists (server generates clear names; no "Service 28" endings)
+/* Ensure services list exists (human friendly, >200) */
 function ensureServices() {
   const p = path.join(DATA_DIR, "services.json");
   if (fs.existsSync(p)) return;
   const templates = {
-    "Property & Maintenance": ["Roof Repair","Gutter Cleaning","Plumbing Repair","Drain Unblock","Tiling","Painting - Interior","Painting - Exterior","Plastering","Carpentry","Glazier - Window Repair","Fence Repair","Concrete Repair","Leak Detection","Damp Proofing","Locksmith","Roof Inspection","Chimney Repair"],
+    "Property & Maintenance": ["Roof Repair","Gutter Cleaning","Plumbing Repair","Drain Unblock","Tiling","Interior Painting","Exterior Painting","Plastering","Carpentry","Window Repair","Fence Repair","Concrete Repair","Leak Detection","Damp Proofing","Locksmith"],
     "Cleaning & Hygiene": ["House Cleaning - Standard","House Cleaning - Deep","Office Cleaning","End of Lease Clean","Carpet Steam Clean","Curtain Cleaning","Window Cleaning","Sanitization & Disinfection","Tile & Grout Clean","Upholstery Cleaning"],
-    "Security & Energy": ["CCTV Installation","CCTV Maintenance","Alarm System Installation","Electric Fence Installation","Gate Motor","Access Control","Intercom Install","Home Automation - Security","Alarm Repair"],
-    "Outdoor & Garden": ["Lawn Mowing","Garden Maintenance","Tree Pruning","Tree Removal","Hedge Trimming","Irrigation System Install","Landscape Design","Paving & Patio Install","Fence & Gate Installation"],
-    "Appliances & Repairs": ["Fridge Repair","Washing Machine Repair","Dryer Repair","Oven & Stove Repair","Dishwasher Repair","Microwave Repair","Appliance Installation","Appliance Safety Check"],
-    "Electrical": ["Light Fitting Install","Switch & Socket Repair","Full Rewire - Small","Partial Rewire","Electrical Inspection","Ceiling Fan Install","Smoke Detector Install"],
-    "Plumbing": ["Toilet Install/Replace","Hot Water System Repair","Hot Water System Replace","Gas Appliance Check","Water Heater Install","Tap Replacement","Bathroom Suite Install","Kitchen Plumbing"],
-    "Handyman": ["Flat Pack Assembly","Shelving Install","Picture/Hanger Install","Door Adjustment","Lock Replacement","Odd Jobs"],
-    "Renovation & Building": ["Kitchen Renovation","Bathroom Renovation","Home Extension Prep","Flooring Install","Plaster & Skim Coating","Minor Brickwork","Tiling - walls & floors","Structural Repair (inspect)"],
-    "Automotive & On-Site": ["Mobile Mechanic - Basic","Battery Replacement (Mobile)","Tyre Change (mobile)","Vehicle Recovery","On-site Diagnostics","Car Detailing"],
-    "Miscellaneous": ["IT & Networking - Setup","Furniture Moving","Pest Control","Waste Clearance","Holiday Home Checks"]
+    "Security & Energy": ["CCTV Installation","CCTV Maintenance","Alarm System Installation","Electric Fence Installation","Gate Motor","Access Control","Intercom Install","Battery Backup","Energy Audit"],
+    "Outdoor & Garden": ["Lawn Mowing","Garden Maintenance","Tree Pruning","Tree Felling","Hedge Trimming","Irrigation Install","Landscape Design","Paving & Patio"],
+    "Appliances & Repairs": ["Fridge Repair","Washing Machine Repair","Dryer Repair","Oven Repair","Dishwasher Repair","Microwave Repair"],
+    "Electrical": ["Light Fitting Install","Switch & Socket Repair","Full Rewire","Partial Rewire","Electrical Inspection","Ceiling Fan Install"],
+    "Plumbing": ["Toilet Install/Replace","Hot Water Repair","Hot Water Replace","Burst Pipe Repair","Tap Replacement","Bathroom Fitting"],
+    "Handyman": ["Flat Pack Assembly","Shelving Install","Picture Hanger Install","Odd Jobs"],
+    "Renovation": ["Kitchen Renovation","Bathroom Renovation","Flooring Install","Structural Repair","Tiling"]
   };
   const services = [];
-  let idIdx = 1;
+  let id = 1;
   for (const [cat, arr] of Object.entries(templates)) {
-    arr.forEach(name => services.push({ id: `s-${idIdx++}`, cat, name }));
+    arr.forEach(n => services.push({ id: `s-${id++}`, cat, name: n }));
   }
-  // generate sensible extras to reach >200
   while (services.length < 220) {
     const cats = Object.keys(templates);
-    const cat = cats[Math.floor(Math.random() * cats.length)];
-    services.push({ id: `s-${idIdx++}`, cat, name: `${cat.split(' ')[0]} Specialist ${idIdx}` });
+    const c = cats[Math.floor(Math.random()*cats.length)];
+    services.push({ id: `s-${id++}`, cat: c, name: `${c.split(" ")[0]} Specialist ${id}` });
   }
   writeJSON("services", services);
 }
 ensureServices();
 
-/* Endpoints */
-
-// admin-secret check (visibility only)
-app.get("/api/admin-secret", (req,res) => res.json({ ok:true, secret: !!ADMIN_SECRET }));
-
-// GET services
+/* API: GET /api/services */
 app.get("/api/services", (req,res) => {
   const services = readJSON("services");
   const cat = req.query.cat;
@@ -129,34 +126,34 @@ app.get("/api/services", (req,res) => {
   res.json({ ok:true, services });
 });
 
-// GET contractors
+/* API: GET /api/contractors */
 app.get("/api/contractors", (req,res) => {
   const contractors = readJSON("contractors");
   res.json({ ok:true, contractors });
 });
 
-// POST contractor upsert
+/* API: POST /api/contractor - create/update contractor */
 app.post("/api/contractor", (req,res) => {
   try {
-    const incoming = req.body;
+    const c = req.body;
     const contractors = readJSON("contractors");
-    const matchIdx = contractors.findIndex(c => (incoming.id && c.id === incoming.id) || (incoming.phone && c.phone === incoming.phone));
-    if (matchIdx > -1) {
-      contractors[matchIdx] = { ...contractors[matchIdx], ...incoming, updated: new Date().toISOString() };
+    const idx = contractors.findIndex(x => (c.id && x.id === c.id) || (c.phone && x.phone === c.phone));
+    if (idx > -1) {
+      contractors[idx] = { ...contractors[idx], ...c, updated: new Date().toISOString() };
     } else {
-      const id = incoming.id || `ct-${Date.now()}`;
-      contractors.unshift({ id, ...incoming, created: new Date().toISOString() });
+      const id = c.id || `ct-${Date.now()}`;
+      contractors.unshift({ id, ...c, created: new Date().toISOString() });
     }
     writeJSON("contractors", contractors);
-    appendLog("contractors", { action: "upsert", contractor: incoming });
+    appendLog("contractors", { action: "upsert", contractor: c });
     return res.json({ ok:true });
   } catch (err) {
-    console.error("contractor upsert err", err);
+    console.error("contractor upsert", err);
     return res.status(500).json({ ok:false, error: String(err) });
   }
 });
 
-// POST lead
+/* API: POST /api/lead - save lead, notify admin & contractor */
 app.post("/api/lead", async (req,res) => {
   try {
     const { name, phone, email, service, message, contractorId } = req.body;
@@ -166,64 +163,61 @@ app.post("/api/lead", async (req,res) => {
       `👤 ${name || "-"}`,
       `📞 ${phone || "-"}`,
       service ? `🛠 ${service}` : "",
-      message ? `💬 ${message.length>300 ? message.slice(0,300) + "..." : message}` : "",
+      message ? `💬 ${message.length>300 ? message.slice(0,300)+"..." : message}` : "",
       email ? `📧 ${email}` : "",
       `⏱ ${new Date().toLocaleString()}`
     ].filter(Boolean).join("\n");
 
-    // notify admin
     if (BOT_TOKEN && ADMIN_CHAT_ID) {
       await sendTelegram(BOT_TOKEN, ADMIN_CHAT_ID, text);
     }
 
-    // notify specific contractor if they have token/chat
     if (contractorId) {
       const contractors = readJSON("contractors");
-      const c = contractors.find(x => x.id === contractorId || x.phone === contractorId || x.name === contractorId);
+      const c = contractors.find(x => x.id === contractorId || x.phone === contractorId);
       if (c && c.telegramToken && c.telegramChatId) {
         await sendTelegram(c.telegramToken, c.telegramChatId, text);
       }
     }
-    return res.json({ ok:true });
+    res.json({ ok:true });
   } catch (err) {
     console.error("lead err", err);
-    return res.status(500).json({ ok:false, error: String(err) });
+    res.status(500).json({ ok:false, error: String(err) });
   }
 });
 
-// POST review + file upload (stores images in uploads and persists review)
+/* POST /api/review with images */
 app.post("/api/review", upload.array("images", 8), (req,res) => {
   try {
     const { contractor, name, rating, comment } = req.body;
     const images = (req.files || []).map(f => `/uploads/${path.basename(f.path)}`);
-    appendLog("reviews", { contractor, name, rating, comment, images });
+    appendLog("reviews", { contractor, name, rating: Number(rating||0), comment, images });
     const reviews = readJSON("reviews");
-    reviews.unshift({ contractor, name, rating: Number(rating || 0), comment, images, ts: new Date().toISOString() });
+    reviews.unshift({ contractor, name, rating: Number(rating||0), comment, images, ts: new Date().toISOString() });
     writeJSON("reviews", reviews);
-    return res.json({ ok:true, images });
+    res.json({ ok:true, images });
   } catch (err) {
-    console.error("review upload err", err);
-    return res.status(500).json({ ok:false, error: String(err) });
+    console.error("review err", err);
+    res.status(500).json({ ok:false, error: String(err) });
   }
 });
 
-// POST message (contractor -> admin)
+/* POST /api/message contractor->admin */
 app.post("/api/message", (req,res) => {
   try {
     const { contractorId, message } = req.body;
     appendLog("messages", { contractorId, message });
-    // send to admin chat if possible
     if (BOT_TOKEN && ADMIN_CHAT_ID) {
       sendTelegram(BOT_TOKEN, ADMIN_CHAT_ID, `<b>Message from Contractor</b>\nID: ${contractorId}\n${message}`);
     }
-    return res.json({ ok:true });
+    res.json({ ok:true });
   } catch (err) {
     console.error("message err", err);
-    return res.status(500).json({ ok:false, error: String(err) });
+    res.status(500).json({ ok:false, error: String(err) });
   }
 });
 
-// POST apply badge (admin action, persisted)
+/* POST /api/apply-badge - admin action */
 app.post("/api/apply-badge", (req,res) => {
   try {
     const { adminSecret, contractorId, badge } = req.body;
@@ -235,24 +229,29 @@ app.post("/api/apply-badge", (req,res) => {
     contractors[idx].badgeAssignedAt = new Date().toISOString();
     writeJSON("contractors", contractors);
     appendLog("contractors", { action: "apply-badge", contractorId, badge });
-    return res.json({ ok:true, contractor: contractors[idx] });
+    res.json({ ok:true, contractor: contractors[idx] });
   } catch (err) {
-    console.error("apply-badge err", err);
-    return res.status(500).json({ ok:false, error: String(err) });
+    console.error("apply-badge", err);
+    res.status(500).json({ ok:false, error: String(err) });
   }
 });
 
-// GET logs for admin
+/* GET logs for admin or debugging */
 app.get("/api/logs/:name", (req,res) => {
-  const name = req.params.name;
-  res.json(readJSON(name));
+  const arr = readJSON(req.params.name);
+  res.json(arr);
 });
 
-// fallback static serve for files
-app.use((req,res) => {
+/* helper admin secret check (for UI) */
+app.get("/api/admin-secret", (req,res) => {
+  res.json({ ok:true, secret: !!ADMIN_SECRET });
+});
+
+// static fallback
+app.use((req,res)=>{
   const file = path.join(__dirname, req.path);
   if (fs.existsSync(file) && fs.statSync(file).isFile()) return res.sendFile(file);
   res.status(404).send("Not found");
 });
 
-app.listen(PORT, () => console.log(`🚀 OmniLink Server live on port ${PORT}`));
+app.listen(PORT, ()=>console.log(`🚀 Server running on port ${PORT}`));
