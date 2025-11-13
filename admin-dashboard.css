@@ -1,16 +1,64 @@
-/* admin-dashboard.css */
-body{margin:0;font-family:Inter,system-ui,Arial;background:linear-gradient(180deg,#04030a,#0a0714);color:#efeaf8}
-.admin-shell{padding:20px}
-.admin-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}
-.muted{color:#bdb3d9;font-size:13px}
-.admin-main{display:flex;gap:14px}
-.left-col{flex:1}
-.right-col{width:380px}
-.card{background:linear-gradient(180deg,rgba(255,255,255,0.02),rgba(255,255,255,0.01));padding:12px;border-radius:10px;border:1px solid rgba(255,255,255,0.03)}
-.table-wrap{max-height:540px;overflow:auto}
-.contractor-row{display:flex;justify-content:space-between;align-items:center;padding:8px;border-bottom:1px solid rgba(255,255,255,0.02)}
-.contractor-row:last-child{border-bottom:0}
-.contractor-actions button{margin-left:6px;padding:6px 8px;border-radius:8px;border:none;cursor:pointer}
-.primary{background:linear-gradient(90deg,#6f4cff,#3ec1ff);color:#07101b;padding:8px 10px;border-radius:8px;border:none}
-.ghost{background:transparent;border:1px solid rgba(255,255,255,0.04);padding:6px 8px;border-radius:8px;color:#bdb3d9}
-.log-area{max-height:300px;overflow:auto;font-size:13px;padding-top:8px;color:#cfc7e6}
+body {
+    margin: 0;
+    display: flex;
+    background: #0d0f1a;
+    color: white;
+    font-family: Arial, sans-serif;
+}
+
+#sidebar {
+    width: 250px;
+    background: #111425;
+    min-height: 100vh;
+    padding: 20px;
+    color: #cfd3ff;
+    box-shadow: 0px 0px 12px rgba(0,0,0,0.4);
+}
+
+.admin-photo {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+}
+
+.admin-head {
+    text-align: center;
+}
+
+.nav-section { 
+    margin-top: 18px;
+    font-size: 12px;
+    color: #787e9d;
+    font-weight: bold;
+}
+
+.nav-item {
+    background: #1b1f35;
+    margin-top: 6px;
+    padding: 10px;
+    border-radius: 8px;
+    cursor: pointer;
+}
+.nav-item:hover {
+    background: #2e3560;
+}
+
+#content {
+    flex: 1;
+    padding: 30px;
+}
+
+.page { display: none; }
+.page.active { display: block; }
+
+.cards {
+    display: flex;
+    gap: 15px;
+}
+.card {
+    padding: 20px;
+    background: #1b1f35;
+    border-radius: 12px;
+    width: 200px;
+    text-align: center;
+}
