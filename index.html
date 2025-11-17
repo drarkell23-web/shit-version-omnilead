@@ -17,91 +17,6 @@
   <script src="assets/main.js" defer></script>
   <script src="assets/chatbot.js" defer></script>
 
-  <style>
-    body {
-      font-family: 'Inter', sans-serif;
-      margin: 0;
-      background: #111;
-      color: #fff;
-    }
-
-    header {
-      padding: 20px;
-      background: #161616;
-      text-align: center;
-      font-size: 26px;
-      font-weight: 600;
-      letter-spacing: .5px;
-      border-bottom: 1px solid #222;
-    }
-
-    #categories, #servicesGrid {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 12px;
-      padding: 20px;
-      justify-content: center;
-    }
-
-    .cat {
-      padding: 10px 16px;
-      background: #272727;
-      border-radius: 22px;
-      cursor: pointer;
-      transition: .2s;
-    }
-
-    .cat:hover {
-      background: #333;
-    }
-
-    .service-pill {
-      padding: 10px 16px;
-      background: #0a84ff;
-      color: #fff;
-      border-radius: 22px;
-      cursor: pointer;
-      transition: .2s;
-      white-space: nowrap;
-    }
-    .service-pill:hover { background: #0066cc; }
-
-    .section-title {
-      padding-left: 20px;
-      margin-top: 25px;
-      font-size: 22px;
-      font-weight: 600;
-    }
-
-    #topList div {
-      padding: 10px;
-      border-bottom: 1px solid #ffffff08;
-      cursor: pointer;
-    }
-
-    #topList div:hover {
-      background: #1c1c1c;
-    }
-
-    footer {
-      margin-top: 40px;
-      padding: 30px;
-      background: #161616;
-      text-align: center;
-      border-top: 1px solid #222;
-    }
-
-    .btn {
-      padding: 10px 16px;
-      border-radius: 8px;
-      background: #0a84ff;
-      color: #fff;
-      cursor: pointer;
-      border: none;
-      font-size: 14px;
-    }
-    .btn:hover { background: #0066cc; }
-  </style>
 </head>
 
 <body>
@@ -134,7 +49,7 @@
 </button>
 
 <!-- CHATBOT MODAL -->
-<div id="chatModal" class="chat-modal">
+<div id="chatModal" class="chat-modal hidden">
   <div class="chat-box">
 
     <div class="chat-header">
@@ -142,26 +57,30 @@
       <span id="chatClose" class="close-btn">×</span>
     </div>
 
-    <!-- FIXED FORM (IMPORTANT) -->
-    <form id="leadForm" class="chat-body">
-
+    <div class="chat-body">
       <label>Full Name:</label>
-      <input type="text" id="leadName">
+      <input type="text" id="leadName" placeholder="Your full name">
 
       <label>Phone:</label>
-      <input type="text" id="leadPhone">
+      <input type="text" id="leadPhone" placeholder="Phone number">
 
       <label>Email:</label>
-      <input type="text" id="leadEmail">
+      <input type="text" id="leadEmail" placeholder="you@example.com">
 
       <label>Service Needed:</label>
-      <input type="text" id="leadService">
+      <input type="text" id="leadService" placeholder="Which service?">
 
       <label>Message:</label>
-      <textarea id="leadMessage"></textarea> <!-- FIXED ID -->
+      <textarea id="leadMessage" placeholder="Describe the job"></textarea>
 
-      <button type="submit" class="btn">Send Request</button>
-    </form>
+      <div id="contractorPick" style="display:none; margin:10px 0;">
+        <div id="contractorOptions"></div>
+      </div>
+
+      <button id="chatSend" class="btn">Send Request</button>
+
+      <div id="chatFlow" class="chat-flow" style="margin-top:12px; max-height:160px; overflow:auto;"></div>
+    </div>
 
   </div>
 </div>
