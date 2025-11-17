@@ -1,72 +1,58 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Create Contractor (Admin)</title>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Create Contractor (Admin)</title>
   <style>
-    body { background:#111; color:white; font-family:Arial; padding:40px; text-align:center; }
-    #card { max-width:450px; margin:auto; background:#1c1c1c; padding:25px; border-radius:12px; }
-    input { width:100%; padding:10px; margin-top:10px; border-radius:6px; border:none; color:#000; }
-    button { width:100%; padding:14px; background:#00aaff; border:none; border-radius:10px; color:white; font-size:18px; margin-top:15px; cursor:pointer; }
-    .muted { font-size:12px; color:#ccc; margin-top:10px; }
+    body{ background:#111; color:#fff; font-family:Arial; padding:40px; text-align:center; }
+    #card{ max-width:450px; margin:auto; background:#1c1c1c; padding:25px; border-radius:12px; }
+    input{ width:100%; padding:10px; margin-top:10px; border-radius:6px; border:none; }
+    button{ width:100%; padding:14px; background:#00aaff; border:none; border-radius:10px; color:white; font-size:18px; margin-top:15px; cursor:pointer; }
   </style>
 </head>
-
 <body>
-<div id="locked" style="display:none;">
-  <h2>Admin Portal Locked</h2>
-  <p>This page is protected.</p>
-  <p>Invalid or missing admin key.</p>
-</div>
-
-<div id="content" style="display:none;">
-  <div id="card">
-    <h2>Create Contractor</h2>
-    <input id="company" placeholder="Company Name">
-    <input id="phone" placeholder="Phone Number">
-    <input id="password" placeholder="Password">
-    <input id="telegram" placeholder="Telegram Chat ID (optional)">
-    <button id="createBtn">Create Contractor</button>
-    <div class="muted">Protected by admin key in the URL.</div>
+  <div id="locked" style="display:none;">
+    <h2>Admin Portal Locked</h2>
+    <p>Invalid or missing admin key.</p>
   </div>
-</div>
 
-<script>
-  // admin key check on client - server still validates key too
-  const ADMIN_KEY = "{{ADMIN_PORTAL_KEY}}"; // server will replace this when serving the file
-  const urlKey = new URLSearchParams(window.location.search).get("key");
-  if (urlKey !== ADMIN_KEY) {
-    document.getElementById("locked").style.display = "block";
-  } else {
-    document.getElementById("content").style.display = "block";
-  }
+  <div id="content" style="display:none;">
+    <div id="card">
+      <h2>Create Contractor</h2>
+      <input id="company" placeholder="Company Name">
+      <input id="phone" placeholder="Phone Number">
+      <input id="password" placeholder="Password">
+      <input id="telegram" placeholder="Telegram Chat ID (optional)">
+      <button id="createBtn">Create Contractor</button>
+      <p id="result" style="margin-top:10px"></p>
+    </div>
+  </div>
 
-  document.getElementById("createBtn").addEventListener("click", async () => {
-    const body = {
-      key: ADMIN_KEY,
-      company: document.getElementById("company").value,
-      phone: document.getElementById("phone").value,
-      password: document.getElementById("password").value,
-      telegram: document.getElementById("telegram").value
-    };
-    const res = await fetch("/api/admin/create-contractor", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body)
-    });
-    const data = await res.json();
-    if (data.ok) {
-      alert("Contractor created!");
-      // you can clear fields or redirect
-      document.getElementById("company").value = "";
-      document.getElementById("phone").value = "";
-      document.getElementById("password").value = "";
-      document.getElementById("telegram").value = "";
+  <script>
+    // server injects ADMIN_PORTAL_KEY placeholder
+    const ADMIN_PORTAL_KEY = "{{ADMIN_PORTAL_KEY}}";
+    const urlKey = new URLSearchParams(window.location.search).get("key");
+    if (urlKey !== ADMIN_PORTAL_KEY) {
+      document.getElementById("locked").style.display = "block";
     } else {
-      alert("Error: " + (data.error || "unknown"));
+      document.getElementById("content").style.display = "block";
     }
-  });
-</script>
+
+    document.getElementById('createBtn').addEventListener('click', async ()=>{
+      const body = {
+        company: document.getElementById('company').value,
+        phone: document.getElementById('phone').value,
+        password: document.getElementById('password').value,
+        telegram: document.getElementById('telegram').value
+      };
+      const res = await fetch('/api/admin/create-contractor', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body) });
+      const j = await res.json();
+      if (j.ok) {
+        document.getElementById('result').innerText = 'Contractor created!';
+      } else {
+        document.getElementById('result').innerText = 'Error: ' + (j.error || 'unknown');
+      }
+    });
+  </script>
 </body>
 </html>
