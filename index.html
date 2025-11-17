@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Service Point SA — All Services</title>
+  <title>Service Point SA — Find Services</title>
 
   <!-- Fonts -->
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
@@ -12,98 +12,97 @@
   <link rel="stylesheet" href="assets/main.css" />
   <link rel="stylesheet" href="assets/chatbot.css" />
 
-  <!-- Client code -->
-  <script type="module" src="assets/main.js" defer></script>
-  <script type="module" src="assets/chatbot.js" defer></script>
+  <!-- Scripts -->
+  <script defer src="assets/main.js"></script>
+  <script defer src="assets/chatbot.js"></script>
 </head>
 <body>
-  <header class="site-header">
-    <div class="brand">
-      <div class="logo">Service Point SA</div>
-    </div>
-    <div class="header-actions">
-      <button id="themeToggle" class="small-btn">Toggle Theme</button>
-      <button id="btnContractor" class="small-btn">Contractor</button>
-      <button id="btnAdmin" class="small-btn">Admin</button>
-    </div>
-  </header>
+  <div id="app" class="app-root">
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="logo">Service Point SA</div>
+      </div>
 
-  <div class="layout">
-    <!-- LEFT BAR -->
-    <aside class="leftbar">
-      <div class="leftbar-inner">
-        <div class="left-title">Categories</div>
-
+      <div class="sidebar-section">
+        <div class="sidebar-title">Categories</div>
         <div id="categoriesList" class="categories-list">
           <!-- populated by JS -->
         </div>
+      </div>
 
-        <div class="search-block">
-          <input id="serviceSearch" placeholder="Search 200+ services..." />
-        </div>
-
-        <div class="left-bottom">
-          <button id="openChatBtn" class="btn-primary">Need Help? Chat</button>
-        </div>
+      <div class="sidebar-footer">
+        <button class="btn ghost" id="openSignup">Contractor Signup</button>
+        <div class="small muted">© 2025 Service Point SA</div>
       </div>
     </aside>
 
-    <!-- MAIN -->
-    <main class="main-area">
-      <section class="top-row">
-        <div class="top-left">
-          <h2>All Services</h2>
-          <div id="servicesGrid" class="services-grid">Loading services…</div>
+    <!-- Main content -->
+    <main class="main">
+      <header class="topbar">
+        <div class="search-wrap">
+          <input id="searchInput" class="search" placeholder="Search for services or contractors..." />
+          <button id="searchBtn" class="btn primary">Search</button>
+        </div>
+        <div class="top-right">
+          <button id="topContractorsBtn" class="btn ghost">Top Contractors</button>
+          <button id="btnAdmin" class="btn ghost">Admin</button>
+        </div>
+      </header>
+
+      <section class="content">
+        <div class="left-column">
+          <div class="panel">
+            <h3>All Services</h3>
+            <div id="servicesGrid" class="services-grid">
+              <!-- services listed here -->
+            </div>
+          </div>
         </div>
 
-        <div class="top-right">
-          <h3>Top Contractors</h3>
-          <div id="topContractors" class="contractors-list">Loading contractors…</div>
+        <div class="right-column">
+          <div class="panel compact">
+            <h3>Top Rated Contractors</h3>
+            <div id="topList" class="top-list"></div>
+          </div>
 
-          <h3 style="margin-top:18px">Testimonials</h3>
-          <div id="testimonials" class="testimonials">Loading reviews…</div>
+          <div class="panel compact">
+            <h3>Customer Testimonials</h3>
+            <div id="testimonials" class="testimonials"></div>
+          </div>
+
+          <div class="panel compact">
+            <h3>Need help?</h3>
+            <button id="chatOpen" class="btn gradient">Open Chatbot</button>
+          </div>
         </div>
       </section>
     </main>
   </div>
 
-  <!-- Chatbot modal / floating widget -->
-  <div id="chatWidget" class="chat-widget hidden">
-    <div class="chat-header">
-      <strong>Omni Assistant</strong>
-      <button id="chatClose" class="close-x">×</button>
-    </div>
+  <!-- Chat canvas -->
+  <canvas id="graffitiCanvas" class="graffiti"></canvas>
 
-    <div class="chat-body">
+  <!-- Chat modal (chatbot.js will enable) -->
+  <div id="chatModal" class="chat-modal hidden">
+    <div class="chat-box">
+      <div class="chat-header">
+        Omni Assistant
+        <button id="chatClose" class="close">×</button>
+      </div>
       <div id="chatFlow" class="chat-flow"></div>
 
-      <form id="leadForm" class="lead-form">
+      <form id="leadForm" class="chat-form">
         <input id="leadName" placeholder="Full name" />
         <input id="leadPhone" placeholder="Phone" />
         <input id="leadEmail" placeholder="Email (optional)" />
         <input id="leadService" placeholder="Service (choose or type)" />
-        <textarea id="leadMessage" placeholder="Describe the job or add details"></textarea>
-
-        <div class="contractor-select" id="contractorPick" style="display:none;">
-          <small>Select contractor (optional)</small>
-          <div id="contractorOptions" class="contractor-options"></div>
-        </div>
-
-        <div class="form-row">
-          <button id="leadSend" class="btn-primary" type="submit">Send Request</button>
-          <button id="leadClear" class="small-btn" type="button">Clear</button>
+        <textarea id="leadMessage" placeholder="Message"></textarea>
+        <div class="row">
+          <button type="submit" id="chatSend" class="btn primary">Send Request</button>
         </div>
       </form>
     </div>
   </div>
-
-  <footer class="site-footer">
-    © <span id="year"></span> Service Point SA — All rights reserved.
-  </footer>
-
-  <script>
-    // set year
-    document.getElementById('year').innerText = new Date().getFullYear();
-  </script>
 </body>
 </html>
