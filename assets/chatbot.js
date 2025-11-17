@@ -1,23 +1,24 @@
 // assets/chatbot.js
-// Lightweight chat UI glue that complements main.js. If you already have a chatbot.js with more features
-// this file keeps behaviour minimal and safe.
+// Extra helpers for the chatbot UI (keeps it lean; main logic is in main.js)
 
-const $ = s => document.querySelector(s);
+document.addEventListener('DOMContentLoaded', () => {
+  // enhance lead service select change to show contractors by service
+  const leadService = document.getElementById('leadService');
+  if (leadService) {
+    leadService.addEventListener('change', (e) => {
+      const name = e.target.value;
+      if (!name) return;
+      // dispatch custom event so main.js can show contractors
+      const detail = { name };
+      window.dispatchEvent(new CustomEvent('chat-service-selected', { detail }));
+    });
+  }
 
-document.addEventListener('DOMContentLoaded', ()=> {
-  // wire chat open from both button and the floating button (if present)
-  const openBtn = $('#chatOpen') || document.querySelector('.chat-open-btn');
-  if(openBtn) openBtn.addEventListener('click', ()=> {
-    const modal = $('#chatModal');
-    if(modal) modal.classList.remove('hidden');
+  // listen for the global show contractor event from main.js
+  window.addEventListener('chat-show-contractors', (e) => {
+    // in case external components want to trigger contractor listing
+    const s = e.detail;
+    const evt = new CustomEvent('omni-service-selected', { detail: s });
+    window.dispatchEvent(evt);
   });
-
-  const closeBtn = $('#chatClose');
-  if(closeBtn) closeBtn.addEventListener('click', ()=> {
-    const modal = $('#chatModal');
-    if(modal) modal.classList.add('hidden');
-  });
-
-  // also wire close on Escape
-  document.addEventListener('keydown', (e)=> { if(e.key === 'Escape') { const m = $('#chatModal'); if(m) m.classList.add('hidden'); } });
 });
