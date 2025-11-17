@@ -1,62 +1,10 @@
-/* chatbot styles */
+/* simple standalone chat css for modal/chat button */
+
 .chat-open-btn{
-  position:fixed;
-  right:18px;
-  bottom:22px;
-  background:#0a84ff;
-  color:#fff;
-  border:none;
-  padding:12px 14px;
-  border-radius:12px;
-  cursor:pointer;
-  z-index:1000;
-  box-shadow:0 6px 18px rgba(0,0,0,.4);
+  position:fixed;right:28px;bottom:28px;padding:12px 16px;border-radius:12px;background:linear-gradient(90deg,#7b5cff,#ff5fa3);color:#fff;border:none;cursor:pointer;box-shadow:0 8px 20px rgba(0,0,0,0.5);z-index:45
 }
-.chat-modal{
-  position:fixed;
-  right:18px;
-  bottom:78px;
-  width:360px;
-  max-width:92%;
-  z-index:1000;
-  background:transparent;
-}
-.chat-box{
-  background:#101010;
-  border-radius:10px;
-  padding:12px;
-  border:1px solid #222;
-  box-shadow:0 10px 30px rgba(0,0,0,.6);
-}
-.chat-header{
-  display:flex;
-  justify-content:space-between;
-  align-items:center;
-  font-weight:600;
-  padding-bottom:8px;
-}
-.close-btn{ cursor:pointer; font-size:20px; }
 
-.chat-body label{ display:block; margin-top:8px; font-size:13px; color:#ddd; }
-.chat-body input, .chat-body textarea{
-  width:100%;
-  padding:8px;
-  margin-top:6px;
-  border-radius:6px;
-  border:1px solid #222;
-  background:#0f0f0f;
-  color:#fff;
-  box-sizing:border-box;
-}
-.chat-body textarea{ min-height:72px; resize:vertical; }
-
-.chat-flow{ margin-top:10px; font-size:13px; }
-.msg{ padding:6px 8px; border-radius:8px; margin:6px 0; display:inline-block; max-width:86%; }
-.msg.bot{ background:#0c1220; color:#dfe9ff; align-self:flex-start; }
-.msg.user{ background:#0a84ff; color:#fff; align-self:flex-end; }
-.hidden{ display:none; }
-.contractor-card{
-  display:flex; align-items:center; gap:8px; padding:8px; background:#151515; border-radius:8px; margin-bottom:8px;
-}
-.contractor-card img{ width:48px; height:48px; border-radius:6px; object-fit:cover; }
-.pick-btn{ margin-left:auto; padding:6px 10px; border-radius:6px; background:#00a; color:#fff; border:none; cursor:pointer; }
+.close{background:transparent;border:none;color:var(--muted);font-size:18px;cursor:pointer}
+.msg{padding:8px;border-radius:8px;margin-bottom:8px;max-width:86%}
+.msg.bot{background:rgba(255,255,255,0.02);align-self:flex-start}
+.msg.user{background:linear-gradient(90deg,#00b894,#00d27a);color:#042;align-self:flex-end}
