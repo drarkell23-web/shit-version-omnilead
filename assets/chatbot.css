@@ -1,17 +1,62 @@
-/* Chatbot styles */
-.chat-modal{position:fixed;right:18px;bottom:70px;width:420px;max-width:95%;background:linear-gradient(180deg,#11061a,#0b0712);border-radius:12px;padding:10px;border:1px solid #ffffff12;box-shadow:0 30px 60px rgba(0,0,0,0.6);z-index:1015}
-.chat-modal.hidden{display:none}
-.chat-wrap{position:relative}
-.chat-close{position:absolute;right:8px;top:8px;border:none;background:transparent;color:var(--muted);cursor:pointer}
-.chat-head{padding:12px 6px;border-bottom:1px solid #ffffff06;margin-bottom:8px;display:flex;flex-direction:column;gap:4px}
-.chat-flow{height:200px;overflow:auto;padding:8px;border-radius:8px;background:#040316;margin-bottom:8px;display:flex;flex-direction:column;gap:8px}
-.msg{padding:8px;border-radius:8px;background:#0b0712;border:1px solid #ffffff06}
-.bot{background:linear-gradient(90deg,#6b5cff,#ee6ee9);color:#07101b;font-weight:700}
-.user{background:#07101b;color:#ddd;border:1px solid #ffffff06}
-.lead-form input, .lead-form textarea{width:100%;padding:10px;border-radius:8px;background:#070418;border:1px solid #ffffff06;color:var(--text);margin-bottom:8px}
-.contractor-pick{margin-top:6px;padding:8px;border-radius:8px;background:#06031a;border:1px solid #ffffff06}
-.contractor-card{display:flex;gap:8px;align-items:center;padding:8px;margin-bottom:6px;border-radius:8px;background:#080416;cursor:pointer;border:1px solid #ffffff06}
-.contractor-card img{height:40px;width:40px;border-radius:8px;object-fit:cover}
-.contractor-card .meta{flex:1}
-.contractor-card .pick-btn{background:transparent;border:1px solid rgba(255,255,255,0.06);padding:6px;border-radius:8px;color:var(--muted)}
-.lead-actions{text-align:right}
+/* chatbot styles */
+.chat-open-btn{
+  position:fixed;
+  right:18px;
+  bottom:22px;
+  background:#0a84ff;
+  color:#fff;
+  border:none;
+  padding:12px 14px;
+  border-radius:12px;
+  cursor:pointer;
+  z-index:1000;
+  box-shadow:0 6px 18px rgba(0,0,0,.4);
+}
+.chat-modal{
+  position:fixed;
+  right:18px;
+  bottom:78px;
+  width:360px;
+  max-width:92%;
+  z-index:1000;
+  background:transparent;
+}
+.chat-box{
+  background:#101010;
+  border-radius:10px;
+  padding:12px;
+  border:1px solid #222;
+  box-shadow:0 10px 30px rgba(0,0,0,.6);
+}
+.chat-header{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  font-weight:600;
+  padding-bottom:8px;
+}
+.close-btn{ cursor:pointer; font-size:20px; }
+
+.chat-body label{ display:block; margin-top:8px; font-size:13px; color:#ddd; }
+.chat-body input, .chat-body textarea{
+  width:100%;
+  padding:8px;
+  margin-top:6px;
+  border-radius:6px;
+  border:1px solid #222;
+  background:#0f0f0f;
+  color:#fff;
+  box-sizing:border-box;
+}
+.chat-body textarea{ min-height:72px; resize:vertical; }
+
+.chat-flow{ margin-top:10px; font-size:13px; }
+.msg{ padding:6px 8px; border-radius:8px; margin:6px 0; display:inline-block; max-width:86%; }
+.msg.bot{ background:#0c1220; color:#dfe9ff; align-self:flex-start; }
+.msg.user{ background:#0a84ff; color:#fff; align-self:flex-end; }
+.hidden{ display:none; }
+.contractor-card{
+  display:flex; align-items:center; gap:8px; padding:8px; background:#151515; border-radius:8px; margin-bottom:8px;
+}
+.contractor-card img{ width:48px; height:48px; border-radius:6px; object-fit:cover; }
+.pick-btn{ margin-left:auto; padding:6px 10px; border-radius:6px; background:#00a; color:#fff; border:none; cursor:pointer; }
