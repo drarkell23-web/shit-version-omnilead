@@ -1,18 +1,12 @@
-// supabase-client.js
-// Replace the placeholders with your Supabase project info.
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
+// public/supabase-client.js
+// Small helper — replace with your own keys in production.
+// For security: never expose service role key in browser.
+// This file is only used by client pages that need anon access.
 
-export const SUPABASE_URL = 'https://obmbklanktevawuymkbq.supabase.co'; // 
-export const SUPABASE_ANON_KEY = 'sb_publishable_s6K6pqGLGCwm56Fragf4wQ_KnDUDnQv'; // 
+import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
 
+const SUPABASE_URL = 'https://obmbklanktevawuymkbq.supabase.co';
+const SUPABASE_ANON = 'sb_publishable_s6K6pqGLGCwm56Fragf4wQ_KnDUDnQv';
 
-export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-auth: { persistSession: true, detectSessionInUrl: true }
-});
-
-
-export async function getCurrentUser() {
-const { data } = await supabase.auth.getUser();
-return data?.user || null;
-}
+export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON);
