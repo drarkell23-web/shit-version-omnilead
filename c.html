@@ -1,48 +1,56 @@
 <!doctype html>
 <html>
 <head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width,initial-scale=1"/>
-  <title>Contractor</title>
-  <link rel="stylesheet" href="/theme.css">
-</head>
-<body>
-  <div class="contractor-page">
-    <a href="/" class="back">← Home</a>
-    <div id="contractor-root">
-      <div id="contractor-info">
-        <img id="contractor-logo" src="/assets/default-logo.png" alt="logo" style="width:100px;height:100px;object-fit:cover;border-radius:8px"/>
-        <h1 id="contractor-name"></h1>
-        <div id="contractor-badge"></div>
-        <div id="contractor-service"></div>
-        <div id="contractor-phone"></div>
-        <div id="contractor-reviews"></div>
-        <button id="contact-contractor">Contact / Open chat</button>
-      </div>
-    </div>
-  </div>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Contractor Profile</title>
+  <link rel="stylesheet" href="assets/main.css" />
+  <script type="module" src="public/supabase-client.js"></script>
+  <script>
+    // c.html simple client-side display
+    import { supabase } from './public/supabase-client.js';
+    document.addEventListener('DOMContentLoaded', async () => {
+      const qp = new URLSearchParams(location.search);
+      const id = qp.get('id');
+      if(!id) { document.body.innerHTML = '<div style="padding:40px;color:#fff">No contractor id provided.</div>'; return; }
 
-<script>
-(async function(){
-  const id = location.pathname.split("/c/")[1];
-  if (!id) return document.getElementById('contractor-root').innerText = "Invalid contractor id";
-  const r = await fetch(`/api/contractor/${id}`);
-  const j = await r.json();
-  const c = j.contractor || j;
-  if (!c) return document.getElementById('contractor-root').innerText = "Contractor not found";
-  document.getElementById('contractor-name').textContent = c.name || c.company || "No name";
-  document.getElementById('contractor-service').textContent = c.service || "";
-  document.getElementById('contractor-phone').textContent = c.phone || "";
-  if (c.logo) document.getElementById('contractor-logo').src = c.logo;
-  if (c.badge) document.getElementById('contractor-badge').textContent = c.badge;
-  const reviews = j.reviews || [];
-  const revEl = document.getElementById('contractor-reviews');
-  revEl.innerHTML = reviews.map(r=>`<div class="rev"><strong>${r.reviewer_name||r.name||''}</strong> ${'★'.repeat(r.rating||0)}<p>${r.comment||''}</p></div>`).join("");
-  document.getElementById('contact-contractor').addEventListener('click', ()=>{
-    // deep-link to chat with service prefilled
-    window.open('/', '_self'); // you can build more advanced deep link if needed
-  });
-})();
-</script>
-</body>
+      const el = document.createElement('div');
+      el.className = 'panel';
+      el.style.margin = '20px';
+      el.innerHTML = '<div>Loading contractor...</div>';
+      document.body.appendChild(el);
+
+      const { data, error } = await supabase.from('contractors').select('*').eq('id', id).maybeSingle();
+      if(error || !data) {
+        el.innerHTML = '<div style="color:#fff;padding:20px">Contractor not found.</div>';
+        return;
+      }
+
+      el.innerHTML = `
+        <div style="display:flex;gap:20px;align-items:center">
+          <img src="${data.logo_url||'assets/anon.png'}" style="width:96px;height:96px;border-radius:12px;object-fit:cover" />
+          <div>
+            <h1 style="margin-bottom:6px">${data.company||data.name}</h1>
+            <div style="color:var(--muted)">${data.main_service || data.service || ''}</div>
+            <div style="margin-top:8px"><strong>Phone:</strong> ${data.phone||'-'}</div>
+            <div style="margin-top:4px"><strong>Email:</strong> ${data.email||'-'}</div>
+            <div style="margin-top:8px"><strong>Telegram:</strong> ${data.telegram_chat_id || '-'}</div>
+          </div>
+        </div>
+
+        <hr style="border:none;border-top:1px solid rgba(255,255,255,0.03);margin:14px 0" />
+
+        <div>
+          <h3>About</h3>
+          <p style="color:var(--muted)">${data.bio || ''}</p>
+        </div>
+
+        <div style="margin-top:12px">
+          <a href="/index.html" class="btn">Back to Services</a>
+        </div>
+      `;
+    });
+  </script>
+</head>
+<body style="background:var(--bg);color:var(--text)"></body>
 </html>
