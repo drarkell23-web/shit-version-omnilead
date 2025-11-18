@@ -1,5 +1,4 @@
-// server.js — OmniLead API Server (full file)
-// Node >= 18+, run with: node server.js
+// server.js — OmniLead API Server (admin + contractor login + contractor upsert + simple messages)
 import express from "express";
 import fileUpload from "express-fileupload";
 import { createClient } from "@supabase/supabase-js";
@@ -13,336 +12,178 @@ dotenv.config();
 
 const app = express();
 app.use(cors());
-app.use(express.json({ limit: "5mb" }));
-app.use(fileUpload({ limits: { fileSize: 10 * 1024 * 1024 } })); // 10MB
+app.use(express.json());
+app.use(fileUpload());
 
-// --------------------------
-// Environment variables (required)
-// --------------------------
+// env
 const SUPABASE_URL = process.env.SUPABASE_URL;
-const SERVICE_ROLE = process.env.SUPABASE_SERVICE_KEY; // service_role key (server only)
-const ADMIN_PORTAL_KEY = process.env.ADMIN_PORTAL_KEY || "NO_ADMIN_KEY_SET";
-const PORT = process.env.PORT || 3000;
-
+const SERVICE_ROLE = process.env.SUPABASE_SERVICE_KEY;
+const ADMIN_PORTAL_KEY = process.env.ADMIN_PORTAL_KEY || "";
 if (!SUPABASE_URL || !SERVICE_ROLE) {
-  console.error("❌ Missing Supabase environment variables!");
-  console.error("SUPABASE_URL =", SUPABASE_URL);
-  console.error("SUPABASE_SERVICE_KEY =", SERVICE_ROLE ? "SET" : "MISSING");
+  console.error("Missing Supabase env vars. Set SUPABASE_URL and SUPABASE_SERVICE_KEY.");
   process.exit(1);
 }
+const supabase = createClient(SUPABASE_URL, SERVICE_ROLE);
 
-// Connect Supabase with service role (server-only)
-const supabase = createClient(SUPABASE_URL, SERVICE_ROLE, {
-  auth: { persistSession: false }
-});
-
-// Serve static frontend files from project folders
+// serve static
 app.use(express.static("public"));
 app.use(express.static("./"));
-app.use("/assets", express.static(path.join(process.cwd(), "assets")));
 
-// --------------------------
-// Helper: json response
-// --------------------------
-const jsonHeaders = { "Content-Type": "application/json" };
-function sendJson(res, payload, status = 200) {
-  return res.status(status).set(jsonHeaders).send(JSON.stringify(payload));
-}
-
-// --------------------------
-// Admin page loader (inject key into admin-create-contractor.html)
-// --------------------------
+// --- admin page injector (optional)
 app.get("/admin-create-contractor.html", (req, res) => {
   try {
-    const htmlPath = path.join(process.cwd(), "admin-create-contractor.html");
-    if (!fs.existsSync(htmlPath)) return res.status(404).send("Not found");
-    const html = fs.readFileSync(htmlPath, "utf8");
-    const injected = html.replace("{{ADMIN_PORTAL_KEY}}", ADMIN_PORTAL_KEY);
-    res.setHeader("Content-Type", "text/html");
+    const html = fs.readFileSync("admin-create-contractor.html", "utf8");
+    const injected = html.replace("{{ADMIN_PORTAL_KEY}}", ADMIN_PORTAL_KEY || "NO_ADMIN_KEY_SET");
     res.send(injected);
   } catch (err) {
-    console.error(err);
-    res.status(500).send("Admin page error.");
+    res.status(500).send("Admin page missing.");
   }
 });
 
-// --------------------------
-// API: services (GET list)
-// --------------------------
-app.get("/api/services", async (req, res) => {
-  try {
-    const { data, error } = await supabase.from("services").select("*").order("name", { ascending: true }).limit(2000);
-    if (error) return sendJson(res, { ok: false, error: error.message }, 400);
-    return sendJson(res, { ok: true, services: data }, 200);
-  } catch (err) {
-    console.error(err);
-    return sendJson(res, { ok: false, error: String(err) }, 500);
-  }
-});
-
-// --------------------------
-// API: contractors (GET list)
-// --------------------------
-app.get("/api/contractors", async (req, res) => {
-  try {
-    const { data, error } = await supabase.from("contractors").select("*").order("created_at", { ascending: false }).limit(2000);
-    if (error) return sendJson(res, { ok: false, error: error.message }, 400);
-    return sendJson(res, { ok: true, contractors: data }, 200);
-  } catch (err) {
-    console.error(err);
-    return sendJson(res, { ok: false, error: String(err) }, 500);
-  }
-});
-
-// --------------------------
-// API: single contractor (GET by id) and POST upsert (optional)
-// --------------------------
-app.get("/api/contractor", async (req, res) => {
-  try {
-    const id = req.query.id;
-    if (!id) return sendJson(res, { ok: false, error: "missing id" }, 400);
-    const { data, error } = await supabase.from("contractors").select("*").eq("id", id).maybeSingle();
-    if (error) return sendJson(res, { ok: false, error: error.message }, 400);
-    return sendJson(res, { ok: true, contractor: data }, 200);
-  } catch (err) {
-    console.error(err);
-    return sendJson(res, { ok: false, error: String(err) }, 500);
-  }
-});
-
-app.post("/api/contractor", async (req, res) => {
-  try {
-    const body = req.body || {};
-    // Basic upsert params
-    const payload = {
-      id: body.id || undefined,
-      auth_id: body.auth_id || undefined,
-      company: body.company || body.name || null,
-      phone: body.phone || null,
-      password_hash: body.password_hash || body.password ? await bcrypt.hash(body.password, 10) : null,
-      telegram_chat_id: body.telegram_chat_id || body.telegram || null,
-      logo_url: body.logo_url || null,
-      subscription_plan: body.subscription_plan || "free",
-      main_service: body.main_service || null,
-      updated_at: new Date().toISOString()
-    };
-
-    if (!payload.company || !payload.phone) {
-      return sendJson(res, { ok: false, error: "company and phone are required" }, 400);
-    }
-
-    const onConflict = payload.auth_id ? ["auth_id"] : ["id"];
-    const insertObj = { ...payload };
-    if (!payload.id) delete insertObj.id;
-
-    const { data, error } = await supabase.from("contractors").upsert(insertObj, { onConflict }).select().maybeSingle();
-    if (error) return sendJson(res, { ok: false, error: error.message }, 400);
-    return sendJson(res, { ok: true, contractor: data }, 200);
-  } catch (err) {
-    console.error(err);
-    return sendJson(res, { ok: false, error: String(err) }, 500);
-  }
-});
-
-// --------------------------
-// API: create contractor (admin route — used by admin page)
-// This endpoint creates a contractor profile (and optionally a Supabase Auth user if you wire it).
-// For simplicity it inserts into contractors table and stores password_hash.
-// --------------------------
+// -------------------------
+// Admin: create contractor
+// -------------------------
+// Body: { company, phone, password, telegram, key }
+// key must match ADMIN_PORTAL_KEY (or x-admin-key header)
 app.post("/api/admin/create-contractor", async (req, res) => {
   try {
-    // Basic server-side protection: require ADMIN_PORTAL_KEY header or request body key
-    const provided = req.headers["x-admin-key"] || req.body.admin_key || req.query.key;
-    if (!provided || provided !== ADMIN_PORTAL_KEY) {
-      return sendJson(res, { ok: false, error: "unauthorized" }, 401);
-    }
-
-    const { company, phone, password, telegram, email } = req.body || {};
-    if (!company || !phone || !password) return sendJson(res, { ok: false, error: "company, phone and password required" }, 400);
+    const { company, phone, password, telegram, key } = req.body;
+    const headerKey = req.headers["x-admin-key"];
+    const provided = key || headerKey;
+    if (provided !== ADMIN_PORTAL_KEY) return res.status(403).json({ ok: false, error: "Invalid admin key" });
+    if (!company || !phone || !password) return res.json({ ok: false, error: "company/phone/password required" });
 
     const password_hash = await bcrypt.hash(password, 10);
-
-    const insertObj = {
+    const payload = {
       company,
       phone,
-      email: email || null,
       password_hash,
       telegram_chat_id: telegram || null,
       created_at: new Date().toISOString()
     };
 
-    const { data, error } = await supabase.from("contractors").insert([insertObj]).select().maybeSingle();
-    if (error) return sendJson(res, { ok: false, error: error.message }, 400);
-
-    return sendJson(res, { ok: true, contractor: data }, 201);
+    const { data, error } = await supabase.from("contractors").insert([payload]).select().maybeSingle();
+    if (error) return res.json({ ok: false, error: error.message });
+    res.json({ ok: true, contractor: data });
   } catch (err) {
-    console.error(err);
-    return sendJson(res, { ok: false, error: String(err) }, 500);
+    res.json({ ok: false, error: String(err) });
   }
 });
 
-// --------------------------
-// API: contractor login (phone + password) — server verifies password_hash
-// --------------------------
+// -------------------------
+// Contractor login (phone + password)
+// // POST /api/contractor/login { phone, password }
+// -------------------------
 app.post("/api/contractor/login", async (req, res) => {
   try {
-    const { phone, password } = req.body || {};
-    if (!phone || !password) return sendJson(res, { ok: false, error: "phone and password required" }, 400);
+    const { phone, password } = req.body;
+    if (!phone || !password) return res.json({ ok: false, error: "phone/password required" });
 
-    const { data: contractor, error } = await supabase.from("contractors").select("*").eq("phone", phone).maybeSingle();
-    if (error) return sendJson(res, { ok: false, error: error.message }, 400);
-    if (!contractor) return sendJson(res, { ok: false, error: "contractor not found" }, 404);
+    const { data: contractor, error } = await supabase
+      .from("contractors")
+      .select("*")
+      .eq("phone", phone)
+      .maybeSingle();
+
+    if (error) return res.json({ ok: false, error: error.message });
+    if (!contractor) return res.json({ ok: false, error: "Contractor not found" });
 
     const ok = await bcrypt.compare(password, contractor.password_hash || "");
-    if (!ok) return sendJson(res, { ok: false, error: "invalid password" }, 401);
+    if (!ok) return res.json({ ok: false, error: "Invalid password" });
 
-    // Return contractor info (omit password_hash)
-    delete contractor.password_hash;
-    return sendJson(res, { ok: true, contractor }, 200);
+    // successful — return contractor row (no session handling here)
+    return res.json({ ok: true, contractor });
   } catch (err) {
-    console.error(err);
-    return sendJson(res, { ok: false, error: String(err) }, 500);
+    res.json({ ok: false, error: String(err) });
   }
 });
 
-// --------------------------
-// API: leads (POST create, optionally GET list)
-// --------------------------
-app.post("/api/lead", async (req, res) => {
+// -------------------------
+// Contractor upsert (server-side)
+// POST /api/contractor  -> body contains contractor fields (id or auth_id allowed)
+// -------------------------
+app.post("/api/contractor", async (req, res) => {
   try {
-    const { name, phone, email, service, message, contractor_id } = req.body || {};
-    if (!name || !phone || !service) return sendJson(res, { ok: false, error: "name, phone and service are required" }, 400);
-
+    const body = req.body || {};
     const insertObj = {
-      name,
-      phone,
-      email: email || null,
-      service,
-      message: message || null,
-      contractor_id: contractor_id || null,
-      source: req.body.source || null,
-      created_at: new Date().toISOString()
+      id: body.id || undefined,
+      auth_id: body.auth_id || undefined,
+      company: body.company || body.name || null,
+      phone: body.phone || null,
+      password_hash: body.password_hash || null,
+      telegram_chat_id: body.telegram_chat_id || body.telegram || null,
+      logo_url: body.logo_url || null,
+      service: body.service || body.main_service || null,
+      updated_at: new Date().toISOString()
     };
 
-    const { data, error } = await supabase.from("leads").insert([insertObj]).select().maybeSingle();
-    if (error) return sendJson(res, { ok: false, error: error.message }, 400);
-
-    // Optionally: push notification or send telegram message here if contractor has telegram_chat_id (not implemented)
-    return sendJson(res, { ok: true, lead: data }, 201);
-  } catch (err) {
-    console.error(err);
-    return sendJson(res, { ok: false, error: String(err) }, 500);
-  }
-});
-
-app.get("/api/leads", async (req, res) => {
-  try {
-    const { data, error } = await supabase.from("leads").select("*").order("created_at", { ascending: false }).limit(1000);
-    if (error) return sendJson(res, { ok: false, error: error.message }, 400);
-    return sendJson(res, { ok: true, leads: data }, 200);
-  } catch (err) {
-    console.error(err);
-    return sendJson(res, { ok: false, error: String(err) }, 500);
-  }
-});
-
-// --------------------------
-// API: reviews (supports file upload in multipart form-data)
-// POST: fields -> contractor_id, name, rating, comment, files -> images...
-// --------------------------
-app.post("/api/review", async (req, res) => {
-  try {
-    const contractorId = req.body.contractor_id || req.body.contractor || null;
-    const reviewer_name = req.body.name || req.body.reviewer_name || "Customer";
-    const rating = Number(req.body.rating || 5);
-    const comment = req.body.comment || req.body.review || "";
-
-    const images = [];
-
-    // If files were uploaded (express-fileupload), upload to Supabase Storage bucket "contractor-assets"
-    if (req.files) {
-      const files = Array.isArray(req.files.files) ? req.files.files : Object.values(req.files);
-      for (const file of files) {
-        // generate safe path
-        const filename = `${Date.now()}-${file.name.replace(/\s+/g, "_")}`;
-        const filePath = `reviews/${filename}`;
-
-        const { error: uploadErr } = await supabase.storage
-          .from("contractor-assets")
-          .upload(filePath, file.data, {
-            upsert: true,
-            contentType: file.mimetype
-          });
-
-        if (!uploadErr) {
-          const url = supabase.storage.from("contractor-assets").getPublicUrl(filePath).data.publicUrl;
-          images.push(url);
-        }
-      }
+    // basic validation: require id|auth_id or (company & phone)
+    if (!insertObj.id && !insertObj.auth_id && (!insertObj.company || !insertObj.phone)) {
+      return res.json({ ok: false, error: "id/auth_id or (company & phone) required" });
     }
 
-    const payload = {
-      contractor_id: contractorId,
-      reviewer_name,
-      rating,
-      comment,
-      images,
-      created_at: new Date().toISOString()
-    };
+    const onConflict = insertObj.auth_id ? ["auth_id"] : ["id"];
+    if (!insertObj.id) delete insertObj.id;
 
-    const { data, error } = await supabase.from("reviews").insert([payload]).select().maybeSingle();
-    if (error) return sendJson(res, { ok: false, error: error.message }, 400);
-
-    return sendJson(res, { ok: true, review: data }, 201);
+    const { data, error } = await supabase.from("contractors").upsert(insertObj, { onConflict }).select().maybeSingle();
+    if (error) return res.json({ ok: false, error: error.message });
+    res.json({ ok: true, contractor: data });
   } catch (err) {
-    console.error(err);
-    return sendJson(res, { ok: false, error: String(err) }, 500);
+    res.json({ ok: false, error: String(err) });
   }
 });
 
-app.get("/api/reviews", async (req, res) => {
+// -------------------------
+// GET contractor by id
+// GET /api/contractor?id=<id>
+// -------------------------
+app.get("/api/contractor", async (req, res) => {
   try {
-    const { data, error } = await supabase.from("reviews").select("*").order("created_at", { ascending: false }).limit(1000);
-    if (error) return sendJson(res, { ok: false, error: error.message }, 400);
-    return sendJson(res, { ok: true, reviews: data }, 200);
+    const id = req.query.id;
+    if (!id) return res.json({ ok: false, error: "missing id" });
+    const { data, error } = await supabase.from("contractors").select("*").eq("id", id).maybeSingle();
+    if (error) return res.json({ ok: false, error: error.message });
+    res.json({ ok: true, contractor: data });
   } catch (err) {
-    console.error(err);
-    return sendJson(res, { ok: false, error: String(err) }, 500);
+    res.json({ ok: false, error: String(err) });
   }
 });
 
-// --------------------------
-// API: messages (contractor -> admin messages)
-// --------------------------
-app.post("/api/message", async (req, res) => {
+// -------------------------
+// Messages for contractor (admin side or contractor fetching their messages)
+// GET /api/messages?contractorId=<id>
+// POST /api/messages { contractorId, message }
+// -------------------------
+app.get("/api/messages", async (req, res) => {
   try {
-    const { contractorId, message } = req.body || {};
-    if (!contractorId || !message) return sendJson(res, { ok: false, error: "contractorId and message required" }, 400);
-
-    const { data, error } = await supabase.from("messages").insert([{
-      contractor_id: contractorId,
-      message,
-      created_at: new Date().toISOString()
-    }]).select().maybeSingle();
-
-    if (error) return sendJson(res, { ok: false, error: error.message }, 400);
-    return sendJson(res, { ok: true, message: data }, 201);
+    const contractorId = req.query.contractorId;
+    if (!contractorId) return res.json({ ok: false, error: "missing contractorId" });
+    const { data, error } = await supabase.from("messages").select("*").eq("contractor_id", contractorId).order("created_at", { ascending: false }).limit(200);
+    if (error) return res.json({ ok: false, error: error.message });
+    res.json({ ok: true, messages: data });
   } catch (err) {
-    console.error(err);
-    return sendJson(res, { ok: false, error: String(err) }, 500);
+    res.json({ ok: false, error: String(err) });
   }
 });
 
-// --------------------------
-// Health check / index
-// --------------------------
-app.get("/", (req, res) => {
-  res.send("OmniLead API: running");
+app.post("/api/messages", async (req, res) => {
+  try {
+    const { contractorId, message } = req.body;
+    if (!contractorId || !message) return res.json({ ok: false, error: "contractorId and message required" });
+    const { data, error } = await supabase.from("messages").insert([{ contractor_id: contractorId, message, created_at: new Date().toISOString() }]).select();
+    if (error) return res.json({ ok: false, error: error.message });
+    res.json({ ok: true, message: data });
+  } catch (err) {
+    res.json({ ok: false, error: String(err) });
+  }
 });
 
-// --------------------------
-// Start server
-// --------------------------
-app.listen(PORT, () => {
-  console.log(`OmniLead API running on port ${PORT}`);
+// catchall
+app.get("*", (req, res) => {
+  // let static middleware serve files; this is fallback
+  res.sendFile(path.resolve("public/index.html"));
 });
+
+// start
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => console.log("Server running on port", PORT));
