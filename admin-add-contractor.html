@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Add Contractor — Admin Panel</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #0a0a0a;
+      color: #fff;
+      padding: 30px;
+    }
+    h2 { color: #5bff9d; }
+    .card {
+      width: 600px;
+      background: #111;
+      padding: 25px;
+      border-radius: 12px;
+      box-shadow: 0 0 20px #00ff9944;
+    }
+    label { display: block; margin-top: 15px; font-weight: bold; }
+    input, select {
+      width: 100%;
+      padding: 10px;
+      margin-top: 6px;
+      background: #1a1a1a;
+      border: 1px solid #444;
+      border-radius: 8px;
+      color: #fff;
+    }
+    button {
+      width: 100%;
+      margin-top: 20px;
+      background: #00ff95;
+      border: none;
+      padding: 12px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 16px;
+      font-weight: bold;
+      color: black;
+    }
+    .success {
+      background: #004d24;
+      padding: 10px;
+      margin-top: 20px;
+      border-left: 5px solid #00ff95;
+      display: none;
+    }
+    .error {
+      background: #4d0000;
+      padding: 10px;
+      margin-top: 20px;
+      border-left: 5px solid #ff4d4d;
+      display: none;
+    }
+  </style>
+</head>
+<body>
+
+  <h2>Admin — Add New Contractor</h2>
+
+  <div class="card">
+    <label>Company Name</label>
+    <input id="company" type="text" placeholder="Example: Elite Plumbing SA">
+
+    <label>Full Name</label>
+    <input id="name" type="text" placeholder="David Jacobs">
+
+    <label>Service Category</label>
+    <select id="service">
+      <option>Plumbing</option>
+      <option>Electrical</option>
+      <option>Cleaning & Hygiene</option>
+      <option>Security & Energy</option>
+      <option>Renovation</option>
+      <option>Handyman</option>
+      <option>Appliances & Repairs</option>
+      <option>Outdoor & Garden</option>
+      <option>Property & Maintenance</option>
+    </select>
+
+    <label>Rating (0 - 5)</label>
+    <input id="rating" type="number" min="1" max="5" step="0.1" value="4.8">
+
+    <label>Upload Logo</label>
+    <input id="logo" type="file" accept="image/*">
+
+    <label>Telegram Chat ID (optional)</label>
+    <input id="telegram" type="text" placeholder="123456789">
+
+    <button onclick="submitContractor()">Add Contractor</button>
+
+    <div id="success" class="success">Contractor added successfully!</div>
+    <div id="error" class="error">Something went wrong!</div>
+  </div>
+
+<script>
+async function submitContractor() {
+    const company = document.getElementById("company").value.trim();
+    const name = document.getElementById("name").value.trim();
+    const service = document.getElementById("service").value;
+    const rating = document.getElementById("rating").value;
+    const telegram = document.getElementById("telegram").value.trim();
+    const logoFile = document.getElementById("logo").files[0];
+
+    if (!company || !name) {
+        alert("Company & Name required!");
+        return;
+    }
+
+    let logoBase64 = null;
+    if (logoFile) {
+        logoBase64 = await toBase64(logoFile);
+    }
+
+    const payload = {
+        company,
+        name,
+        service,
+        rating,
+        telegram_chat_id: telegram || null,
+        logo: logoBase64
+    };
+
+    const res = await fetch("/api/admin/add-contractor", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+    });
+
+    const data = await res.json();
+
+    if (data.ok) {
+        document.getElementById("success").style.display = "block";
+        document.getElementById("error").style.display = "none";
+    } else {
+        document.getElementById("error").style.display = "block";
+        document.getElementById("success").style.display = "none";
+    }
+}
+
+function toBase64(file) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = error => reject(error);
+        reader.readAsDataURL(file);
+    });
+}
+</script>
+
+</body>
+</html>
