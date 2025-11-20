@@ -1,0 +1,298 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Admin Dashboard — Service Point SA</title>
+  <style>
+    /* Minimal, elegant dark dashboard style inspired by your mockup */
+    :root{
+      --bg:#0f1113; --card:#111315; --muted:#9aa3ad; --accent:#00e676; --panel:#0b0c0d;
+      --glass: rgba(255,255,255,0.02);
+      font-family: Inter, system-ui, sans-serif;
+    }
+    html,body{height:100%;margin:0;background:linear-gradient(180deg,#091214 0%, #0b0f12 100%);color:#e6eef2}
+    .wrap{display:grid;grid-template-columns:260px 1fr 360px;gap:18px;padding:24px;height:100vh;box-sizing:border-box}
+    aside{background:var(--card);border-radius:12px;padding:18px;box-shadow:0 8px 30px rgba(0,0,0,0.6)}
+    header{font-size:18px;font-weight:700;margin-bottom:18px}
+    .menu a{display:block;color:var(--muted);padding:8px 6px;border-radius:8px;text-decoration:none;margin-bottom:6px}
+    .menu a.active{background:linear-gradient(90deg,#071b26,#0b1e23);color:#dff8ef}
+    .content{background:var(--card);border-radius:12px;padding:18px;overflow:auto;box-shadow:0 8px 30px rgba(0,0,0,0.6)}
+    .panel{display:flex;gap:12px;flex-wrap:wrap}
+    .stat{background:var(--panel);padding:14px;border-radius:10px;min-width:140px;box-shadow:inset 0 0 0 1px rgba(255,255,255,0.02)}
+    .big{font-size:28px;font-weight:700}
+    .muted{color:var(--muted);font-size:13px}
+    .right{background:var(--card);border-radius:12px;padding:18px;box-shadow:0 8px 30px rgba(0,0,0,0.6);overflow:auto}
+    table{width:100%;border-collapse:collapse}
+    table tr td{padding:8px;border-bottom:1px solid rgba(255,255,255,0.03)}
+    .btn{background:linear-gradient(90deg,#6a5cff,#00c6ff);border:none;padding:10px 12px;border-radius:8px;color:white;font-weight:600;cursor:pointer}
+    .small{font-size:13px;padding:6px 8px;border-radius:8px}
+    .list{display:flex;flex-direction:column;gap:8px}
+    .card{background:var(--glass);padding:10px;border-radius:8px}
+    label{display:block;font-size:13px;color:var(--muted);margin-bottom:6px}
+    input,select,textarea{background:#061115;border:1px solid rgba(255,255,255,0.03);padding:10px;border-radius:8px;color:#e6eef2;width:100%;box-sizing:border-box}
+    .row{display:flex;gap:12px}
+    .row > *{flex:1}
+    .footer{color:var(--muted);font-size:13px;margin-top:12px}
+    .messages{max-height:350px;overflow:auto}
+    .message{background:rgba(255,255,255,0.02);padding:8px;border-radius:8px;margin-bottom:8px}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <aside>
+      <div header>Service Point SA — Admin</div>
+      <div class="menu">
+        <a class="active" href="#" data-view="overview">Overview</a>
+        <a href="#" data-view="leads">Leads</a>
+        <a href="#" data-view="contractors">Contractors</a>
+        <a href="#" data-view="messages">Messages</a>
+        <a href="#" data-view="reviews">Reviews</a>
+        <a href="#" data-view="settings">Settings</a>
+      </div>
+      <div style="margin-top:16px">
+        <button id="btn-new-contractor" class="btn" style="width:100%">Create Contractor</button>
+      </div>
+      <div class="footer">© Service Point SA</div>
+    </aside>
+
+    <main class="content">
+      <div id="view-overview" class="view">
+        <div class="panel" style="margin-bottom:14px">
+          <div class="stat"><div class="muted">Total Leads</div><div id="stat-leads" class="big">—</div></div>
+          <div class="stat"><div class="muted">Contractors</div><div id="stat-contractors" class="big">—</div></div>
+          <div class="stat"><div class="muted">Open Messages</div><div id="stat-messages" class="big">—</div></div>
+          <div class="stat"><div class="muted">Avg Response (hrs)</div><div id="stat-response" class="big">—</div></div>
+        </div>
+
+        <div style="margin-top:12px">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+            <strong>Recent Leads</strong>
+            <div><button id="refresh-leads" class="small">Refresh</button></div>
+          </div>
+          <div style="background:rgba(255,255,255,0.02);border-radius:8px;padding:8px">
+            <table id="leads-table"><thead><tr><th>Name</th><th>Phone</th><th>Service</th><th>Contractor</th><th>Time</th></tr></thead><tbody></tbody></table>
+          </div>
+        </div>
+      </div>
+
+      <div id="view-leads" class="view" style="display:none">
+        <h3>All Leads</h3>
+        <div style="margin-top:10px">
+          <table id="all-leads-table"><thead><tr><th>Name</th><th>Phone</th><th>Service</th><th>Contractor</th><th>Time</th></tr></thead><tbody></tbody></table>
+        </div>
+      </div>
+
+      <div id="view-contractors" class="view" style="display:none">
+        <h3>Contractors</h3>
+        <div style="margin-top:10px" id="contractor-list"></div>
+      </div>
+
+      <div id="view-messages" class="view" style="display:none">
+        <h3>Messages (contractor & admin)</h3>
+        <div style="display:flex;gap:12px">
+          <div style="flex:1">
+            <div class="messages" id="messages-list"></div>
+          </div>
+          <div style="width:320px">
+            <label>Send message to contractor (id)</label>
+            <input id="msg-contractor-id" placeholder="contractor id (optional)">
+            <label>Sender name</label>
+            <input id="msg-sender" value="Admin">
+            <label>Message</label>
+            <textarea id="msg-text" rows="4"></textarea>
+            <div style="margin-top:8px">
+              <button id="send-msg" class="btn" style="width:100%">Send</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div id="view-reviews" class="view" style="display:none">
+        <h3>Reviews</h3>
+        <div id="reviews-list"></div>
+      </div>
+
+      <div id="view-settings" class="view" style="display:none">
+        <h3>Settings</h3>
+        <div class="card" style="margin-top:8px">
+          <label>Admin contact email</label>
+          <input id="admin-email" value="renurture.solutions@gmail.com">
+          <label>Telegram admin chat id</label>
+          <input id="admin-chatid" placeholder="(set in server .env)">
+          <div style="margin-top:8px"><button id="save-settings" class="small">Save (local)</button></div>
+        </div>
+      </div>
+    </main>
+
+    <aside class="right">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+        <strong>Live Activities</strong>
+        <button id="btn-refresh-all" class="small">Refresh</button>
+      </div>
+
+      <div style="margin-bottom:12px">
+        <div class="card">
+          <div class="muted">Realtime Messages</div>
+          <div id="live-messages" style="margin-top:8px;max-height:220px;overflow:auto"></div>
+        </div>
+      </div>
+
+      <div style="margin-bottom:12px">
+        <div class="card">
+          <div class="muted">Recent contractors</div>
+          <div id="recent-contractors" style="margin-top:8px"></div>
+        </div>
+      </div>
+
+      <div>
+        <div class="card">
+          <div class="muted">Quick Create Contractor</div>
+          <div style="margin-top:8px">
+            <label>Company</label><input id="quick-company">
+            <label>Phone</label><input id="quick-phone">
+            <label>Password</label><input id="quick-password" type="password">
+            <div style="margin-top:8px"><button id="quick-create" class="btn">Create</button></div>
+            <div id="quick-result" style="margin-top:8px;color:var(--muted)"></div>
+          </div>
+        </div>
+      </div>
+
+    </aside>
+  </div>
+
+<script>
+/*
+  admin-dashboard.js (embedded)
+  - Calls the API server you run (same server as main site)
+  - Expects base API at the same origin (if hosting admin separately, change API_BASE)
+*/
+const API_BASE = window.location.origin; // assumes server is same origin; change as needed
+
+// Views
+document.querySelectorAll('.menu a').forEach(a=>{
+  a.addEventListener('click',(ev)=>{
+    ev.preventDefault();
+    document.querySelectorAll('.menu a').forEach(x=>x.classList.remove('active'));
+    a.classList.add('active');
+    const v = a.dataset.view;
+    document.querySelectorAll('.view').forEach(x=>x.style.display='none');
+    const el = document.getElementById('view-'+v);
+    if (el) el.style.display = '';
+  });
+});
+
+async function fetchStats(){
+  const [leadsRes, contractorsRes, messagesRes] = await Promise.allSettled([
+    fetch(API_BASE + '/api/leads').then(r=>r.json()).catch(()=>({ok:false})),
+    fetch(API_BASE + '/api/contractors').then(r=>r.json()).catch(()=>({ok:false})),
+    fetch(API_BASE + '/api/messages').then(r=>r.json()).catch(()=>({ok:false}))
+  ]);
+  const leads = leadsRes?.value?.leads || [];
+  const contractors = contractorsRes?.value?.contractors || [];
+  const messages = messagesRes?.value?.messages || [];
+  document.getElementById('stat-leads').innerText = leads.length;
+  document.getElementById('stat-contractors').innerText = contractors.length;
+  document.getElementById('stat-messages').innerText = messages.length;
+  // fill tables
+  const tbody = document.querySelector('#leads-table tbody');
+  tbody.innerHTML='';
+  (leads||[]).slice(0,10).forEach(l=>{
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${l.name||''}</td><td>${l.phone||''}</td><td>${l.service||''}</td><td>${l.contractor_id||''}</td><td>${new Date(l.created_at||'').toLocaleString()}</td>`;
+    tbody.appendChild(tr);
+  });
+  const allT = document.querySelector('#all-leads-table tbody');
+  if(allT){
+    allT.innerHTML='';
+    (leads||[]).forEach(l=>{
+      const tr = document.createElement('tr');
+      tr.innerHTML = `<td>${l.name||''}</td><td>${l.phone||''}</td><td>${l.service||''}</td><td>${l.contractor_id||''}</td><td>${new Date(l.created_at||'').toLocaleString()}</td>`;
+      allT.appendChild(tr);
+    });
+  }
+  // contractors list
+  const cl = document.getElementById('contractor-list');
+  if (cl) {
+    cl.innerHTML = '';
+    (contractors||[]).slice(0,200).forEach(c=>{
+      const d = document.createElement('div');
+      d.className='card';
+      d.innerHTML = `<strong>${c.company||c.name||'Contractor'}</strong><div class="muted">${c.phone||''} • ${c.service||''}</div>`;
+      cl.appendChild(d);
+    });
+  }
+  // recent contractors panel
+  const rc = document.getElementById('recent-contractors');
+  rc.innerHTML='';
+  (contractors||[]).slice(0,6).forEach(c=>{
+    const div = document.createElement('div'); div.className='card';
+    div.innerHTML = `<strong>${c.company||c.name}</strong><div class="muted">${c.phone||''}</div>`;
+    rc.appendChild(div);
+  });
+  // messages panel
+  const lm = document.getElementById('live-messages');
+  lm.innerHTML='';
+  (messages||[]).slice(0,10).forEach(m=>{
+    const el = document.createElement('div'); el.className='message';
+    el.innerHTML = `<div style="font-size:13px"><strong>${m.sender||'User'}</strong> <span class="muted">${m.contractor_id?(' • '+m.contractor_id):''}</span></div><div style="margin-top:6px">${m.message}</div><div class="muted" style="font-size:12px;margin-top:6px">${new Date(m.created_at||'').toLocaleString()}</div>`;
+    lm.appendChild(el);
+  });
+  // messages list
+  const ml = document.getElementById('messages-list');
+  ml.innerHTML='';
+  (messages||[]).slice(0,100).forEach(m=>{
+    const el = document.createElement('div'); el.className='card';
+    el.innerHTML = `<div><strong>${m.sender}</strong> ${m.contractor_id?'<span class="muted"> • '+m.contractor_id+'</span>':''}</div><div class="muted">${new Date(m.created_at).toLocaleString()}</div><div style="margin-top:6px">${m.message}</div>`;
+    ml.appendChild(el);
+  });
+}
+
+document.getElementById('refresh-leads').addEventListener('click', fetchStats);
+document.getElementById('btn-refresh-all').addEventListener('click', fetchStats);
+
+document.getElementById('send-msg').addEventListener('click', async ()=>{
+  const contractorId = document.getElementById('msg-contractor-id').value || null;
+  const sender = document.getElementById('msg-sender').value || 'Admin';
+  const message = document.getElementById('msg-text').value || '';
+  if (!message) return alert('Enter message');
+  const res = await fetch(API_BASE + '/api/message', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ contractorId, sender, message }) });
+  const j = await res.json();
+  if (j.ok) {
+    document.getElementById('msg-text').value='';
+    fetchStats();
+    alert('Message sent');
+  } else alert('Failed: '+(j.error||'unknown'));
+});
+
+document.getElementById('quick-create').addEventListener('click', async ()=>{
+  const company = document.getElementById('quick-company').value;
+  const phone = document.getElementById('quick-phone').value;
+  const password = document.getElementById('quick-password').value;
+  if (!company || !phone || !password) return alert('company, phone, password');
+  const res = await fetch(API_BASE + '/api/admin/create-contractor', {
+    method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ company, phone, password })
+  });
+  const j = await res.json();
+  if (j.ok) {
+    document.getElementById('quick-result').innerText = 'Created: ' + (j.contractor.company || j.contractor.id);
+    fetchStats();
+  } else {
+    document.getElementById('quick-result').innerText = 'Error: ' + (j.error || 'unknown');
+  }
+});
+
+document.getElementById('btn-new-contractor').addEventListener('click', ()=> {
+  // switch to contractors view
+  document.querySelectorAll('.menu a').forEach(x=>x.classList.remove('active'));
+  document.querySelector('[data-view="contractors"]').classList.add('active');
+  document.querySelectorAll('.view').forEach(x=>x.style.display='none');
+  document.getElementById('view-contractors').style.display='';
+});
+
+// auto-refresh
+fetchStats();
+setInterval(fetchStats, 12_000);
+</script>
+</body>
+</html>
