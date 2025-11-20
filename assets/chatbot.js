@@ -1,147 +1,116 @@
-// assets/chatbot.js — Chat UI, contractor pick, lead submit
+// chatbot.js — handles chat widget, lead submission, contractor selection
 const $ = sel => document.querySelector(sel);
-const chatModal = $('#chatModal');
-const chatOpenBtn = $('#chatOpen');
-const chatCloseBtn = $('#chatClose');
-const chatFlow = $('#chatFlow');
-const leadForm = $('#leadForm');
-const contractorOptions = $('#contractorOptions');
-const contractorPickBox = $('#contractorPick');
-const chatSendBtn = $('#chatSend');
 
-let CONTRACTORS = [];
-let SERVICES = [];
+// small helpers from main.js are already defined in that file when both load. If loaded independently, add fallbacks:
+const chatWidget = document.getElementById('chatWidget');
+const chatOpenBtn = document.getElementById('chatOpen');
+const chatCloseBtn = document.getElementById('chatClose');
+const chatFlow = document.getElementById('chatFlow');
+const leadForm = document.getElementById('leadForm');
 
-document.addEventListener('DOMContentLoaded', async () => {
-  // try to use loaded data from main.js (if available)
-  CONTRACTORS = window.__SP_CONTRACTORS || await fetchContractors();
-  SERVICES = window.__SP_SERVICES || await fetchServices();
-  wireForm();
+let selectedContractorId = null;
+
+document.addEventListener('DOMContentLoaded', () => {
+  if (!chatWidget) return;
+  chatWidget.style.display = 'none';
+  chatOpenBtn.addEventListener('click', ()=> {
+    chatWidget.style.display = 'flex';
+    addBotMessage('Hi — I am Service Assistant. Tell me your name and what you need or choose a service from the site.');
+  });
+  chatCloseBtn.addEventListener('click', ()=> chatWidget.style.display = 'none');
+  document.getElementById('chatCancel').addEventListener('click', ()=> leadForm.reset());
+
+  // prefill if someone triggered from main.js openChatWithService
+  leadForm.addEventListener('submit', async (ev) => {
+    ev.preventDefault();
+    await submitLeadFromChat();
+  });
+
+  // when service select changes hide/show contractor options
+  const s = document.getElementById('leadService');
+  if (s) s.addEventListener('change', ()=> {
+    selectedContractorId = null;
+    document.getElementById('contractorPick').style.display = 'none';
+  });
+
+  addBotMessage('Welcome! I can help you find the right service or send a request.');
 });
 
-async function fetchContractors(){
-  try {
-    const res = await fetch('/api/contractors');
-    const j = await res.json();
-    return j.contractors || [];
-  } catch(e){ return []; }
-}
-async function fetchServices(){
-  try {
-    const res = await fetch('/api/services');
-    const j = await res.json();
-    return j.services || [];
-  } catch(e){ return []; }
-}
-
-function openChatModal(){
-  chatModal.classList.remove('hidden');
-  addBotMessage("Hi — I'm Service Assistant. Tell me what you need or pick a service from the left.");
-  scrollChat();
-  // if a service is already in the field, show matching contractors
-  const svc = $('#leadService').value;
-  if (svc) showContractorOptionsForService({name: svc});
-}
-
-function closeChatModal(){
-  chatModal.classList.add('hidden');
-}
-
-// small helpers
+/* messages */
 function addBotMessage(html){
-  const d = document.createElement('div'); d.className='msg bot'; d.innerHTML = html; chatFlow.appendChild(d); scrollChat();
+  const d = document.createElement('div'); d.className='msg bot'; d.innerHTML = html;
+  chatFlow.appendChild(d); chatFlow.scrollTop = chatFlow.scrollHeight;
 }
 function addUserMessage(text){
-  const d = document.createElement('div'); d.className='msg user'; d.textContent = text; chatFlow.appendChild(d); scrollChat();
+  const d = document.createElement('div'); d.className='msg user'; d.innerHTML = text;
+  chatFlow.appendChild(d); chatFlow.scrollTop = chatFlow.scrollHeight;
 }
-function scrollChat(){ chatFlow.scrollTop = chatFlow.scrollHeight; }
 
-// show contractors matching service
+/* contractor selection UI */
 function showContractorOptionsForService(s){
-  contractorOptions.innerHTML = '';
-  contractorPickBox.style.display = 'block';
-  const matches = (CONTRACTORS||[]).filter(c=>{
-    const cs = (c.service||'').toLowerCase();
-    const sname = (s.name||'').toLowerCase();
-    return cs.includes(sname.split(' ')[0]) || (c.company||'').toLowerCase().includes(sname);
-  }).slice(0,6);
+  const holder = document.getElementById('contractorOptions');
+  holder.innerHTML = '';
+  document.getElementById('contractorPick').style.display = 'block';
 
-  const top = matches.length ? matches : (CONTRACTORS||[]).slice(0,6);
+  // match by service words
+  const matches = (window.CONTRACTORS||[]).filter(c => (c.service||'').toLowerCase().includes((s.name||'').split(' ')[0].toLowerCase()));
+  const top = matches.length ? matches.slice(0,4) : (window.CONTRACTORS||[]).slice(0,4);
 
   top.forEach(c=>{
-    const card = document.createElement('div');
-    card.className = 'contractor-card';
-    card.innerHTML = `<img src="${c.logo_url||'assets/logo.png'}" alt=""><div style="font-size:13px;margin-top:6px">${c.company||c.name||'Contractor'}</div>`;
-    card.addEventListener('click', ()=>{
-      // set chosen contractor id on form
-      leadForm.dataset.contractorId = c.id || c.auth_id || '';
-      addBotMessage(`You chose <strong>${c.company||c.name}</strong>. I'll send the lead to them if you submit.`);
+    const btn = document.createElement('div');
+    btn.className = 'card';
+    btn.style.display = 'inline-block';
+    btn.style.margin = '6px';
+    btn.style.cursor = 'pointer';
+    btn.innerHTML = `<strong>${c.company||c.name}</strong><div style="font-size:12px;color:rgba(255,255,255,0.6)">${c.service||''}</div>`;
+    btn.addEventListener('click', ()=> {
+      selectedContractorId = c.id || c.auth_id || null;
+      // highlight selection
+      Array.from(holder.children).forEach(ch=>ch.style.opacity=0.6);
+      btn.style.opacity = 1;
+      addBotMessage(`I'll try sending your lead to <strong>${c.company||c.name}</strong>.`);
     });
-    contractorOptions.appendChild(card);
+    holder.appendChild(btn);
   });
 }
 
-function wireForm(){
-  chatOpenBtn.addEventListener('click', openChatModal);
-  chatCloseBtn.addEventListener('click', closeChatModal);
-
-  // if leadService changes (prefilled), show options
-  const leadServiceInput = $('#leadService');
-  leadServiceInput.addEventListener('input', (e)=>{
-    if (e.target.value) showContractorOptionsForService({name: e.target.value});
-  });
-
-  chatSendBtn.addEventListener('click', submitLead);
-}
-
-async function submitLead(){
-  const name = $('#leadName').value.trim();
-  const phone = $('#leadPhone').value.trim();
-  const email = $('#leadEmail').value.trim();
-  const service = $('#leadService').value.trim();
-  const message = $('#leadMessage').value.trim();
-  const contractorId = leadForm.dataset.contractorId || null;
+/* submit lead */
+async function submitLeadFromChat(){
+  const name = document.getElementById('leadName').value.trim();
+  const phone = document.getElementById('leadPhone').value.trim();
+  const email = document.getElementById('leadEmail').value.trim();
+  const service = document.getElementById('leadService').value.trim();
+  const message = document.getElementById('leadMessage').value.trim();
 
   if (!name || !phone || !service) {
-    addBotMessage("Please provide your name, phone and select a service.");
+    addBotMessage('Please enter your name, phone and service.');
     return;
   }
 
-  addUserMessage(`${name} — ${phone}`);
+  addUserMessage(`${name} — ${phone} — ${service}`);
   addBotMessage('Sending your request...');
 
-  const payload = { name, phone, email, service, message, contractorId, source: 'chat' };
+  const payload = {
+    name, phone, email, service, message, contractorId: selectedContractorId || undefined, source: 'chat'
+  };
 
   try {
-    const res = await fetch('/api/lead', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
-    });
+    const res = await fetch('/api/lead', { method:'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload) });
     const j = await res.json();
     if (j.ok) {
-      addBotMessage('✅ Request sent. A contractor or our team will contact you soon.');
-      leadForm.reset(); contractorOptions.innerHTML=''; contractorPickBox.style.display='none';
-      // small confetti-ish visual: create a quick dot
-      confettiDot();
-      setTimeout(()=> closeChatModal(), 1500);
+      addBotMessage('✅ Request sent. You will be contacted shortly.');
+      leadForm.reset();
+      selectedContractorId = null;
+      document.getElementById('contractorPick').style.display = 'none';
+      // update main page stats if available
+      const statEl = document.getElementById('stat-leads');
+      if (statEl) statEl.innerText = Number(statEl.innerText || 0) + 1;
+      setTimeout(()=> chatWidget.style.display = 'none', 1200);
     } else {
-      addBotMessage('❌ Failed to send. Try again or contact renurture.solutions@gmail.com');
-      console.error(j);
+      addBotMessage('❌ Failed to send — please try again.');
     }
-  } catch (err) {
+  } catch (err){
     console.error(err);
-    addBotMessage('Network error sending lead.');
+    addBotMessage('Network error while sending lead.');
   }
 }
-
-function confettiDot(){
-  const el = document.createElement('div');
-  el.style.position='fixed'; el.style.right='60px'; el.style.bottom='140px';
-  el.style.width='10px'; el.style.height='10px'; el.style.borderRadius='50%';
-  el.style.background='linear-gradient(90deg,#00e6c3,#00aaff)'; el.style.zIndex=9999;
-  document.body.appendChild(el);
-  setTimeout(()=> el.remove(),1200);
-}
-
-// expose helper to main.js for when user clicks a service
-window.addBotMessage = addBotMessage;
-window.showContractorOptionsForService = showContractorOptionsForService;
