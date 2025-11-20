@@ -1,0 +1,7 @@
+{
+  "contractors": [
+    {"id":"c1","company":"FixIt Plumbing","phone":"0671111111","service":"Plumbing","logo":"/assets/logo-1.png","badge":"Platinum","telegram_chat_id":null},
+    {"id":"c2","company":"Bright Electric","phone":"0672222222","service":"Electrical","logo":"/assets/logo-2.png","badge":"Diamond","telegram_chat_id":null},
+    {"id":"c3","company":"RoofCare Pro","phone":"0673333333","service":"Roofing","logo":"/assets/logo-3.png","badge":"Standard","telegram_chat_id":null}
+  ]
+}

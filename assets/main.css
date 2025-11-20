@@ -1,0 +1,31 @@
+:root{--bg:#0f0f11;--card:#131313;--muted:#9aa0a6;--accent:#0a84ff}
+*{box-sizing:border-box}body,html{height:100%;margin:0;font-family:Inter,system-ui,Segoe UI,Roboto,"Helvetica Neue",Arial;color:#fff;background:var(--bg)}
+.app{display:flex;height:100vh}
+.sidebar{width:260px;background:linear-gradient(180deg,#111,#0d0d0d);padding:22px;display:flex;flex-direction:column;gap:18px;border-right:1px solid #1b1b1b}
+.brand{font-weight:700;font-size:20px;margin-bottom:6px}
+.sidebar-title{font-weight:600;font-size:13px;margin-bottom:10px;color:var(--muted)}
+.categories-list{display:flex;flex-direction:column;gap:8px}
+.cat-pill{padding:8px 12px;background:#161616;border-radius:8px;cursor:pointer;border:1px solid transparent}
+.cat-pill:hover{background:#1f1f1f}
+.footer-cta{margin-top:auto;font-size:13px;color:var(--muted)}
+
+.main{flex:1;display:flex;flex-direction:column}
+.main-header{display:flex;justify-content:space-between;align-items:center;padding:18px 22px;border-bottom:1px solid #191919;background:linear-gradient(180deg,transparent,#0d0d0d)}
+.search-wrap input{width:420px;padding:10px 12px;border-radius:10px;border:none;background:#0b0b0b;color:#fff}
+.btn{background:var(--accent);border:none;padding:10px 12px;border-radius:10px;color:#fff;cursor:pointer}
+.btn.small{padding:8px 10px;font-size:13px}
+.content{display:flex;gap:18px;padding:22px;flex:1;overflow:auto}
+.left-col{flex:1}
+.right-col{width:360px}
+.section-title{font-size:16px;margin:0 0 10px 0;font-weight:600}
+.services-grid{display:flex;flex-wrap:wrap;gap:10px}
+.service-pill{background:#111;padding:10px 12px;border-radius:8px;cursor:pointer;min-width:160px;text-align:center;border:1px solid #202020}
+.service-pill:hover{transform:translateY(-3px);box-shadow:0 6px 18px rgba(10,132,255,0.06)}
+.top-list{background:rgba(255,255,255,0.02);border-radius:8px;padding:8px}
+.top-list .contractor-row{padding:12px;border-bottom:1px solid #181818;display:flex;justify-content:space-between;align-items:center;cursor:pointer}
+.top-list .contractor-row:last-child{border-bottom:none}
+.testimonials{background:rgba(255,255,255,0.02);border-radius:8px;padding:8px}
+.muted{color:var(--muted);font-size:13px}
+.chat-open-btn{position:fixed;right:28px;bottom:28px;background:var(--accent);border:none;padding:14px 16px;border-radius:999px;color:#fff;cursor:pointer;box-shadow:0 8px 30px rgba(10,132,255,0.12)}
+/* responsive */
+@media (max-width:980px){.sidebar{display:none}.right-col{display:none}.search-wrap input{width:240px}}
