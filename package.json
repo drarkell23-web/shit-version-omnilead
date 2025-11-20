@@ -1,0 +1,14 @@
+{
+  "name": "service-point-monorepo",
+  "private": true,
+  "workspaces": [
+    "main-site-complete",
+    "admin-dashboard-complete/frontend",
+    "admin-dashboard-complete/backend",
+    "contractor-dashboard-complete"
+  ],
+  "scripts": {
+    "build": "echo 'This is a workspace root. Choose a project to build.'",
+    "start": "echo 'This is a workspace root. Choose a project to start.'"
+  }
+}
