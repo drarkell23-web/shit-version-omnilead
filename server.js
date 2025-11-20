@@ -324,8 +324,56 @@ app.get("/api/contractor/:id", async (req, res) => {
 });
 
 // -----------------------------
+// ADMIN: Add new contractor (full profile version)
+// From admin-add-contractor.html
+// -----------------------------
+app.post("/api/admin/add-contractor", async (req, res) => {
+  try {
+    const { company, name, service, rating, telegram_chat_id, logo } = req.body;
+
+    if (!company || !name || !service)
+      return res.status(400).json({ ok: false, error: "company, name and service required" });
+
+    const contractor = {
+      id: "c_" + Date.now(),
+      company,
+      name,
+      service,
+      rating: Number(rating) || 5,
+      telegram_chat_id: telegram_chat_id || null,
+      logo: logo || null,
+      created_at: new Date().toISOString()
+    };
+
+    // Save via Supabase
+    if (supabase) {
+      const { data, error } = await supabase
+        .from("contractors")
+        .insert([contractor])
+        .select()
+        .single();
+
+      if (error) return res.status(500).json({ ok: false, error: error.message });
+      return res.json({ ok: true, contractor: data });
+    }
+
+    // Fallback: local JSON
+    const j = await readLocal("contractors.json", { contractors: [] });
+    j.contractors = j.contractors || [];
+    j.contractors.push(contractor);
+    await writeLocal("contractors.json", j);
+
+    return res.json({ ok: true, contractor });
+  } catch (err) {
+    console.error("create contractor error", err);
+    return res.status(500).json({ ok: false, error: err.toString() });
+  }
+});
+
+// -----------------------------
 // Start server
 // -----------------------------
 app.listen(PORT, () => {
   console.log(`Main site API running on port ${PORT}`);
 });
+
