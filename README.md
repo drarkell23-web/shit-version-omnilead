@@ -1,14 +1,14 @@
-Contractor Dashboard (Standalone static package)
------------------------------------------------
+# Admin Dashboard
+
+Open index.html locally. This page callsAdmin Dashboard (Static package)
+--------------------------------
 
 How to use:
 1. Replace API_BASE in app.js with your Render API base (example: https://service-point-sa-1.onrender.com).
-2. Zip the folder and send to contractors. They open index.html in a browser.
-3. Contractors login via the Render API endpoint: POST /api/contractor/login with {phone,password}.
-4. The dashboard uses existing Render API endpoints:
-   - /api/contractor (GET/POST)
-   - /api/leads (GET)
-   - /api/reviews (GET)
-   - /api/message (POST)
-
-Do NOT store any service keys in these static files.
+2. To create contractors you may need to supply the admin key in the "Admin key" field (depends on your server setup).
+3. Zip this folder and keep private. This static admin page talks to your Render API endpoints:
+   - POST /api/admin/create-contractor
+   - GET /api/contractors
+   - GET /api/leads
+   - GET /api/reviews
+ `/api/admin/create-contractor` on your server. Keep your service key safe.

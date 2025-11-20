@@ -1,152 +1,121 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>Add Contractor — Admin Panel</title>
+  <meta charset="UTF-8" />
+  <title>Create Contractor — Admin</title>
+
   <style>
     body {
-      font-family: Arial, sans-serif;
       background: #0a0a0a;
-      color: #fff;
+      color: white;
+      font-family: Arial;
       padding: 30px;
     }
-    h2 { color: #5bff9d; }
-    .card {
-      width: 600px;
+    .wrap {
+      max-width: 450px;
+      margin: auto;
       background: #111;
       padding: 25px;
-      border-radius: 12px;
-      box-shadow: 0 0 20px #00ff9944;
+      border-radius: 10px;
+      box-shadow: 0 0 10px #000;
     }
-    label { display: block; margin-top: 15px; font-weight: bold; }
-    input, select {
+    input {
       width: 100%;
-      padding: 10px;
-      margin-top: 6px;
+      margin: 8px 0;
+      padding: 12px;
+      border-radius: 6px;
+      border: 1px solid #333;
       background: #1a1a1a;
-      border: 1px solid #444;
-      border-radius: 8px;
-      color: #fff;
+      color: white;
     }
     button {
       width: 100%;
-      margin-top: 20px;
-      background: #00ff95;
-      border: none;
+      background: #4a90e2;
       padding: 12px;
-      border-radius: 8px;
+      margin-top: 10px;
+      border: none;
+      border-radius: 6px;
+      color: white;
+      font-size: 15px;
       cursor: pointer;
-      font-size: 16px;
-      font-weight: bold;
-      color: black;
     }
-    .success {
-      background: #004d24;
+    #msg {
+      margin-top: 15px;
       padding: 10px;
-      margin-top: 20px;
-      border-left: 5px solid #00ff95;
-      display: none;
-    }
-    .error {
-      background: #4d0000;
-      padding: 10px;
-      margin-top: 20px;
-      border-left: 5px solid #ff4d4d;
+      border-radius: 6px;
       display: none;
     }
   </style>
 </head>
+
 <body>
 
-  <h2>Admin — Add New Contractor</h2>
+<div class="wrap">
+  <h2>Create Contractor</h2>
 
-  <div class="card">
-    <label>Company Name</label>
-    <input id="company" type="text" placeholder="Example: Elite Plumbing SA">
+  <input type="text" id="company" placeholder="Company Name" />
+  <input type="text" id="phone" placeholder="Phone Example 0812345678" />
+  <input type="password" id="password" placeholder="Password" />
+  <input type="text" id="telegram" placeholder="Telegram Chat ID (optional)" />
 
-    <label>Full Name</label>
-    <input id="name" type="text" placeholder="David Jacobs">
+  <button onclick="createContractor()">Create Contractor</button>
 
-    <label>Service Category</label>
-    <select id="service">
-      <option>Plumbing</option>
-      <option>Electrical</option>
-      <option>Cleaning & Hygiene</option>
-      <option>Security & Energy</option>
-      <option>Renovation</option>
-      <option>Handyman</option>
-      <option>Appliances & Repairs</option>
-      <option>Outdoor & Garden</option>
-      <option>Property & Maintenance</option>
-    </select>
-
-    <label>Rating (0 - 5)</label>
-    <input id="rating" type="number" min="1" max="5" step="0.1" value="4.8">
-
-    <label>Upload Logo</label>
-    <input id="logo" type="file" accept="image/*">
-
-    <label>Telegram Chat ID (optional)</label>
-    <input id="telegram" type="text" placeholder="123456789">
-
-    <button onclick="submitContractor()">Add Contractor</button>
-
-    <div id="success" class="success">Contractor added successfully!</div>
-    <div id="error" class="error">Something went wrong!</div>
-  </div>
+  <div id="msg"></div>
+</div>
 
 <script>
-async function submitContractor() {
-    const company = document.getElementById("company").value.trim();
-    const name = document.getElementById("name").value.trim();
-    const service = document.getElementById("service").value;
-    const rating = document.getElementById("rating").value;
-    const telegram = document.getElementById("telegram").value.trim();
-    const logoFile = document.getElementById("logo").files[0];
+async function createContractor() {
+  const company = document.getElementById("company").value.trim();
+  const phone = document.getElementById("phone").value.trim();
+  const password = document.getElementById("password").value.trim();
+  const telegram = document.getElementById("telegram").value.trim();
 
-    if (!company || !name) {
-        alert("Company & Name required!");
-        return;
-    }
+  const msgBox = document.getElementById("msg");
 
-    let logoBase64 = null;
-    if (logoFile) {
-        logoBase64 = await toBase64(logoFile);
-    }
+  msgBox.style.display = "none";
 
-    const payload = {
+  if (!company || !phone || !password) {
+    msgBox.innerHTML = "❌ All required fields must be filled";
+    msgBox.style.background = "#800";
+    msgBox.style.display = "block";
+    return;
+  }
+
+  try {
+    const res = await fetch("/api/admin/create-contractor", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
         company,
-        name,
-        service,
-        rating,
-        telegram_chat_id: telegram || null,
-        logo: logoBase64
-    };
-
-    const res = await fetch("/api/admin/add-contractor", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload)
+        phone,
+        password,
+        telegram
+      })
     });
 
     const data = await res.json();
 
-    if (data.ok) {
-        document.getElementById("success").style.display = "block";
-        document.getElementById("error").style.display = "none";
-    } else {
-        document.getElementById("error").style.display = "block";
-        document.getElementById("success").style.display = "none";
+    if (!data.ok) {
+      msgBox.innerHTML = "❌ " + data.error;
+      msgBox.style.background = "#800";
+      msgBox.style.display = "block";
+      return;
     }
-}
 
-function toBase64(file) {
-    return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result);
-        reader.onerror = error => reject(error);
-        reader.readAsDataURL(file);
-    });
+    msgBox.innerHTML = "✅ Contractor created successfully!";
+    msgBox.style.background = "#060";
+    msgBox.style.display = "block";
+
+    document.getElementById("company").value = "";
+    document.getElementById("phone").value = "";
+    document.getElementById("password").value = "";
+    document.getElementById("telegram").value = "";
+
+  } catch (e) {
+    msgBox.innerHTML = "❌ Server error: " + e.message;
+    msgBox.style.background = "#800";
+    msgBox.style.display = "block";
+  }
 }
 </script>
 
