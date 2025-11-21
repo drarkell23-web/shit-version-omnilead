@@ -1,7 +1,0 @@
-services:
-  - type: web
-    name: dyllons-main
-    env: static
-    buildCommand: npm run build
-    startCommand: npm run preview
-    root: .
