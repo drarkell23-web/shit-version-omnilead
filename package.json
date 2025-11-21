@@ -8,7 +8,7 @@
     "contractor-dashboard-complete"
   ],
   "scripts": {
-    "build": "echo 'This is a workspace root. Choose a project to build.'",
-    "start": "echo 'This is a workspace root. Choose a project to start.'"
+    "build": "echo \"Monorepo root — build inside subfolders\"",
+    "start": "echo \"Monorepo root — start inside subfolders\""
   }
 }
